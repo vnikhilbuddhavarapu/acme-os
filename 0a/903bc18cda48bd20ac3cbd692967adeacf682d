@@ -1,0 +1,33 @@
+.github/workflows/ci.yml
+  s_a10f45aa10a9ca::t_57a760994d66d1 1-47
+.gitignore
+  s_a10f45aa10a9ca::t_078efe932784fa 6-8
+.gitmodules
+  s_a10f45aa10a9ca::t_dbe16421ee843a 3
+acme-os-build-plan.md
+  s_a10f45aa10a9ca::t_4698f0827623cc 1-68
+acme-os-coding-guidelines.md
+  s_a10f45aa10a9ca::t_f463b1b8ab909c 1-66
+acme-os-plan.md
+  s_a10f45aa10a9ca::t_2efe17489f97c8 1-290
+cloudflare-os
+  s_a10f45aa10a9ca::t_e549caeb1359b6 1
+deployment.jsonc
+  s_a10f45aa10a9ca::t_5ab40a3c327ee1 4,10,15,17-19,28-30,38-39,43,66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0a903bc18cda48bd20ac3cbd692967adeacf682d",
+  "prompts": {},
+  "sessions": {
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
