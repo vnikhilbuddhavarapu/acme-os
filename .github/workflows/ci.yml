@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install starter dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install kernel dependencies
+        run: pnpm --dir cloudflare-os install --frozen-lockfile
+
+      - name: Kernel lint:fix
+        run: pnpm --dir cloudflare-os lint:fix
+
+      - name: Kernel lint:check
+        run: pnpm --dir cloudflare-os lint:check
+
+      - name: Kernel build
+        run: pnpm --dir cloudflare-os build
+
+      - name: Kernel test
+        run: pnpm --dir cloudflare-os test
+
+      - name: Starter check
+        run: pnpm check
+
+      - name: Starter test
+        run: pnpm test

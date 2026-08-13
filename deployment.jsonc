@@ -1,22 +1,22 @@
 {
   // Cloudflare account that owns every Worker and provisioned resource.
   // Find it: https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/
-  "accountId": "<CLOUDFLARE_ACCOUNT_ID>",
+  "accountId": "904dd3d810f6f1dd3801d8b940bd747a",
 
   // Worker names are permanent service identities. Keep them unique within the account.
   // Reference: docs/customization.md#workers-and-routing
   "workers": {
     "workshop": {
-      "name": "<WORKSHOP_WORKER_NAME>",
+      "name": "acme-os-workshop",
 
       // Production: use a hostname in an active Cloudflare zone. Wrangler creates DNS and TLS.
       // Evaluation: replace this with "route": { "workersDev": true }.
       // https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
-      "route": { "customDomain": "os.example.com" }
+      "route": { "customDomain": "os.acme-studios.org" }
     },
-    "context": { "name": "<CONTEXT_WORKER_NAME>" },
-    "customGatekeeper": { "name": "<CUSTOM_GATEKEEPER_WORKER_NAME>" },
-    "errorReporter": { "name": "<ERROR_REPORTER_WORKER_NAME>" }
+    "context": { "name": "acme-os-context" },
+    "customGatekeeper": { "name": "acme-os-custom-gk" },
+    "errorReporter": { "name": "acme-os-error-reporter" }
   },
 
   // This starter deploys Cloudflare Access mode. Cloudflare OS also supports built-in password
@@ -25,9 +25,9 @@
   // "admins" gates /admin in every sign-in method.
   // Reference: docs/customization.md#sign-in-methods
   "access": {
-    "issuer": "https://<TEAM_NAME>.cloudflareaccess.com",
-    "audience": "<ACCESS_AUDIENCE>",
-    "admins": ["<ADMIN_EMAIL>"]
+    "issuer": "https://acme-studios.cloudflareaccess.com",
+    "audience": "sprint-0-placeholder-aud",
+    "admins": ["nikhil@acme-studios.org"]
   },
 
   // Optional platform-funded model catalog. Leave disabled to deploy without AI setup.
@@ -35,12 +35,12 @@
   // Reference: docs/customization.md#ai-models
   "aiGateway": {
     "enabled": false,
-    "name": "<AI_GATEWAY_NAME>",
-    "accountId": "<AI_GATEWAY_ACCOUNT_ID>",
+    "name": "acme-os-gateway",
+    "accountId": "904dd3d810f6f1dd3801d8b940bd747a",
     "providers": ["anthropic", "openai", "google", "cloudflare"],
 
     // "direct" sends Workers AI to its REST endpoint. "gateway" adds AI Gateway logs.
-    "workersAi": { "mode": "gateway", "gateway": "<WORKERS_AI_GATEWAY_NAME>" }
+    "workersAi": { "mode": "gateway", "gateway": "acme-os-gateway" }
   },
 
   "context": {
@@ -63,8 +63,8 @@
   // Displayed to agents when the example custom integration is enabled in /admin.
   // Reference: docs/customization.md#custom-gatekeepers
   "customGatekeeper": {
-    "name": "<ORGANIZATION_DISPLAY_NAME>",
-    "message": "<ORGANIZATION_GUIDANCE>"
+    "name": "ACME Studios",
+    "message": "ACME Studios internal integration. Ask the deployment operator before enabling writes."
   },
 
   // Explicit backend issue reports go to a private Worker that emits structured console errors.
