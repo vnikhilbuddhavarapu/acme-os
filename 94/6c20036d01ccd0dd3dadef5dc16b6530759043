@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_90b007e04baacd::t_a3ba563475512e 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "946c20036d01ccd0dd3dadef5dc16b6530759043",
+  "prompts": {},
+  "sessions": {
+    "s_90b007e04baacd": {
+      "agent_id": {
+        "tool": "devin",
+        "id": "s_90b007e04baacd",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
