@@ -26,7 +26,7 @@
   // Reference: docs/customization.md#sign-in-methods
   "access": {
     "issuer": "https://acme-studios.cloudflareaccess.com",
-    "audience": "sprint-0-placeholder-aud",
+    "audience": "cde90c21ea4158d33a00978718b9297447662c829141c81ec406c37b1913804c",
     "admins": ["nikhil@acme-studios.org"]
   },
 
@@ -34,7 +34,7 @@
   // When enabled, replace every placeholder and install CF_AI_GATEWAY_API_TOKEN separately.
   // Reference: docs/customization.md#ai-models
   "aiGateway": {
-    "enabled": false,
+    "enabled": true,
     "name": "acme-os-gateway",
     "accountId": "904dd3d810f6f1dd3801d8b940bd747a",
     "providers": ["anthropic", "openai", "google", "cloudflare"],
@@ -90,6 +90,6 @@
     "enabled": true,
     "headSamplingRate": 1,
     "logs": { "invocationLogs": false },
-    "traces": { "enabled": false, "headSamplingRate": 0.1 }
+    "traces": { "enabled": true, "headSamplingRate": 0.1 }
   }
 }
