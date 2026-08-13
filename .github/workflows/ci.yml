@@ -14,13 +14,11 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Install starter dependencies
         run: pnpm install --frozen-lockfile
