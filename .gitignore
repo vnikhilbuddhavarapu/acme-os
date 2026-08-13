@@ -6,3 +6,10 @@ deployment.local.jsonc
 
 # Local dev secrets (never commit)
 .dev.vars
+
+.dev.secrets.tmp
+
+# Internal planning docs (never commit)
+acme-os-build-plan.md
+acme-os-coding-guidelines.md
+acme-os-plan.md

@@ -423,7 +423,14 @@ async function main() {
       join(root, "cloudflare-os/packages/gatekeeper-context"));
     run(["exec", "wrangler", "deploy", "--config", generatedName, ...deployArgs],
       join(root, "packages/custom-gatekeeper"));
-    run(["exec", "wrangler", "deploy", "--config", generatedName, ...deployArgs],
+    const workshopDeployArgs = [...deployArgs];
+    if (!check && config.aiGateway?.enabled) {
+      const secretsFile = join(root, ".dev.secrets.tmp");
+      if (existsSync(secretsFile)) {
+        workshopDeployArgs.push("--secrets-file", secretsFile);
+      }
+    }
+    run(["exec", "wrangler", "deploy", "--config", generatedName, ...workshopDeployArgs],
       join(root, "cloudflare-os/packages/workshop-backend"));
   } finally {
     await Promise.all(Object.values(generatedPaths).map((path) => rm(path, { force: true })));
