@@ -1,0 +1,33 @@
+.gitignore
+  s_a10f45aa10a9ca::t_70f9d2193c7a4d 9-15
+cloudflare-os
+  s_a10f45aa10a9ca::t_e23938976e1162 1
+deployment.jsonc
+  s_a10f45aa10a9ca::t_2c2a502d01414f 29,37,93
+scripts/deploy.mjs
+  s_8a8fe4254ace54::t_cea36bd656f1a6 426-433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f8fe135566bd20d545e23d1d65ef97c6516d4507",
+  "prompts": {},
+  "sessions": {
+    "s_8a8fe4254ace54": {
+      "agent_id": {
+        "tool": "devin",
+        "id": "s_8a8fe4254ace54",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    },
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
