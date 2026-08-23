@@ -1,0 +1,31 @@
+scripts/deploy.mjs
+  s_7e83e839df787a::t_835a587e51ecfe 266-268,406-409
+config/tiers.json
+  s_7e83e839df787a::t_b14425285b6461 2-4
+cloudflare-os
+  s_a10f45aa10a9ca::t_4573341a3a1677 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "85cdb91d0c2cf558ba958997255b0691f059d4ef",
+  "prompts": {},
+  "sessions": {
+    "s_7e83e839df787a": {
+      "agent_id": {
+        "tool": "devin",
+        "id": "s_7e83e839df787a",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    },
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
