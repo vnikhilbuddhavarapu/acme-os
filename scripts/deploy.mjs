@@ -263,6 +263,9 @@ export function generateConfigs(config, bases) {
     CF_ACCESS_ISS: config.access.issuer.replace(/\/$/, ""),
     CF_ACCESS_AUD: config.access.audience,
   };
+  if (config.tiersConfig) {
+    workshop.vars.TIERS_CONFIG = config.tiersConfig;
+  }
   if (config.aiGateway.enabled) {
     Object.assign(workshop.vars, {
       CF_AI_GATEWAY: config.aiGateway.name,
@@ -400,6 +403,10 @@ function build(config) {
 async function main() {
   requireSubmodule();
   const config = await readDeployment(join(root, "deployment.jsonc"));
+  const tiersPath = join(root, "config/tiers.json");
+  if (existsSync(tiersPath)) {
+    config.tiersConfig = await readFile(tiersPath, "utf8");
+  }
   const generated = generateConfigs(config, {
     workshop: await readJsonc(join(root, "cloudflare-os/packages/workshop-backend/wrangler.jsonc")),
     context: await readJsonc(join(root, "cloudflare-os/packages/gatekeeper-context/wrangler.jsonc")),

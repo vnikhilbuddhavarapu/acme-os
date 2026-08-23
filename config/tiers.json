@@ -1,26 +1,5 @@
 {
-  "tiers": {
-    "frontier": {
-      "description": "Full frontier model catalog, higher spend budget",
-      "groups": ["ai-admins"],
-      "models": "frontier"
-    },
-    "standard": {
-      "description": "2 frontier + selected Workers AI models",
-      "groups": ["Engineering", "Employees"],
-      "models": "standard"
-    },
-    "restricted": {
-      "description": "Workers AI only — safe default for unmatched users",
-      "groups": [],
-      "models": "workers-ai-only"
-    }
-  },
-  "precedence": ["frontier", "standard", "restricted"],
-  "matching": {
-    "type": "exact-string",
-    "caseSensitive": true,
-    "mostPrivilegedWins": true
-  },
-  "defaultTier": "restricted"
+  "frontier": { "groups": ["ai-admins"] },
+  "standard": { "groups": ["ai-users"] },
+  "restricted": { "groups": [] }
 }
