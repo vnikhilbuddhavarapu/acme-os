@@ -1,0 +1,21 @@
+scripts/deploy.mjs
+  s_a10f45aa10a9ca::t_09c41d40e475ac 397-403
+scripts/deploy.test.mjs
+  s_a10f45aa10a9ca::t_4591c10778c8b1 198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "01c7600cca537993f41d59e12dbd9b16d620a5ff",
+  "prompts": {},
+  "sessions": {
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
