@@ -1,0 +1,23 @@
+deployment.jsonc
+  s_a10f45aa10a9ca::t_41d5081a20864a 19-20,71-80
+scripts/deploy.mjs
+  s_a10f45aa10a9ca::t_206714cbfaee0c 16,52-56,131,185-206,284,340-344,382-398,403-407,448-450,473,492-495
+scripts/deploy.test.mjs
+  s_a10f45aa10a9ca::t_7c21084dad3db9 14,34-38,58,166-170,193-197,305-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5954c2d473bb0523b5e13dc7ed52d559d08eb018",
+  "prompts": {},
+  "sessions": {
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
