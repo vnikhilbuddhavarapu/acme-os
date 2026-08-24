@@ -168,6 +168,10 @@ test("generates Access-mode Workshop, Context, and custom Gatekeeper configs", a
       service: "acme-cloudflare-os-mcp-portal",
       entrypoint: "GatekeeperVendor",
     },
+    {
+      binding: "GATEKEEPER_HTTP_MCP_PORTAL",
+      service: "acme-cloudflare-os-mcp-portal",
+    },
   ]);
   assert.deepEqual(generated.workshop.assets, {
     directory: "../workshop-frontend/dist",
@@ -315,6 +319,8 @@ test("omits MCP Portal when not configured", async () => {
   assert.equal(generated.mcpPortal, undefined);
   assert.equal(generated.workshop.services.some(
     (service) => service.binding === "GATEKEEPER_MCP_PORTAL"), false);
+  assert.equal(generated.workshop.services.some(
+    (service) => service.binding === "GATEKEEPER_HTTP_MCP_PORTAL"), false);
 });
 
 test("rejects invalid MCP Portal auth mode", () => {

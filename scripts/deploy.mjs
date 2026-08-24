@@ -342,6 +342,13 @@ export function generateConfigs(config, bases) {
       service: config.workers.mcpPortal.name,
       entrypoint: "GatekeeperVendor",
     }] : []),
+    // HTTP binding (default export) for /gatekeeper/mcp-portal/* callback paths.
+    // The GatekeeperVendor entrypoint is RPC-only; the public fetch handler lives
+    // in the worker's default export.
+    ...(mcpPortal ? [{
+      binding: "GATEKEEPER_HTTP_MCP_PORTAL",
+      service: config.workers.mcpPortal.name,
+    }] : []),
   ];
   workshop.kv_namespaces = [
     { binding: "BLUEPRINTS", ...(config.resources.blueprintsKvNamespaceId
