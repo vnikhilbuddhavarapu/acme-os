@@ -1,5 +1,36 @@
 {
-  "frontier": { "groups": ["ai-admins"] },
-  "standard": { "groups": ["ai-users"] },
-  "restricted": { "groups": [] }
+  "frontier": {
+    "groups": ["ai-admins"],
+    "default": "@cf/zai-org/glm-5.2",
+    "models": [
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-fable-5",
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna",
+      "@cf/moonshotai/kimi-k2.7-code",
+      "@cf/zai-org/glm-5.2",
+      "@cf/deepseek-ai/deepseek-v4-flash-0731",
+      "@cf/moonshotai/kimi-k2.6"
+    ]
+  },
+  "standard": {
+    "groups": ["ai-users"],
+    "default": "@cf/zai-org/glm-5.2",
+    "models": [
+      "@cf/moonshotai/kimi-k2.7-code",
+      "@cf/zai-org/glm-5.2",
+      "@cf/deepseek-ai/deepseek-v4-flash-0731",
+      "@cf/moonshotai/kimi-k2.6",
+      "@cf/meta/llama-4-scout-17b-16e-instruct",
+      "@cf/google/gemma-4-26b-a4b-it",
+      "@cf/nvidia/nemotron-3-120b-a12b"
+    ]
+  },
+  "restricted": {
+    "groups": [],
+    "default": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "models": ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
+  }
 }
