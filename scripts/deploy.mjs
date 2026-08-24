@@ -13,6 +13,7 @@ const generatedPaths = {
   context: join(root, "cloudflare-os/packages/gatekeeper-context", generatedName),
   customGatekeeper: join(root, "packages/custom-gatekeeper", generatedName),
   errorReporter: join(root, "packages/error-reporter", generatedName),
+  mcpPortal: join(root, "cloudflare-os/packages/gatekeeper-mcp-portal", generatedName),
 };
 const defaultContextArtifactsNamespace = "gatekeeper-context-collections";
 
@@ -46,6 +47,11 @@ const aiGatewayPaths = [
 const errorReportingPaths = [
   "workers.errorReporter.name",
   "errorReporting.environment",
+];
+
+const mcpPortalPaths = [
+  "workers.mcpPortal.name",
+  "mcpPortal.url",
 ];
 
 const resourcePaths = [
@@ -122,7 +128,7 @@ export function validateConfig(config) {
     .filter(([key]) => key !== "errorReporter" || config.errorReporting.enabled)
     .map(([, worker]) => worker.name);
   if (new Set(workerNames).size !== workerNames.length) {
-    throw new Error("Workshop, Context, and custom Gatekeeper Worker names must be unique.");
+    throw new Error("Worker names must be unique.");
   }
   if (!workerNames.every((name) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(name))) {
     throw new Error("Worker names must use lowercase letters, numbers, and hyphens.");
@@ -173,6 +179,28 @@ export function validateConfig(config) {
     if (workersAi.mode === "gateway" &&
         (typeof workersAi.gateway !== "string" || !workersAi.gateway.trim())) {
       throw new Error("Workers AI gateway mode requires a gateway name string.");
+    }
+  }
+
+  // MCP Portal configuration is optional: set mcpPortal.url to enable, omit to hide the connector.
+  if (config.mcpPortal) {
+    if (typeof config.mcpPortal.url !== "string" || !config.mcpPortal.url.trim()) {
+      throw new Error("mcpPortal.url must be a non-empty string when mcpPortal is configured.");
+    }
+    try { new URL(config.mcpPortal.url); } catch {
+      throw new Error("mcpPortal.url must be a valid URL.");
+    }
+    if (config.mcpPortal.name !== undefined &&
+        (typeof config.mcpPortal.name !== "string" || !config.mcpPortal.name.trim())) {
+      throw new Error("mcpPortal.name must be a non-empty string or omitted.");
+    }
+    const auth = config.mcpPortal.auth;
+    if (auth !== undefined && !["oauth", "token", "none"].includes(auth)) {
+      throw new Error("mcpPortal.auth must be 'oauth', 'token', or 'none'.");
+    }
+    if (config.mcpPortal.trustAnnotations !== undefined &&
+        typeof config.mcpPortal.trustAnnotations !== "boolean") {
+      throw new Error("mcpPortal.trustAnnotations must be a boolean or omitted.");
     }
   }
 
@@ -253,6 +281,7 @@ export function generateConfigs(config, bases) {
   const workshop = structuredClone(bases.workshop);
   const context = structuredClone(bases.context);
   const customGatekeeper = structuredClone(bases.customGatekeeper);
+  const mcpPortal = config.mcpPortal ? structuredClone(bases.mcpPortal) : undefined;
   const errorReporter = config.errorReporting.enabled
     ? structuredClone(bases.errorReporter)
     : undefined;
@@ -308,6 +337,11 @@ export function generateConfigs(config, bases) {
       service: config.workers.customGatekeeper.name,
       entrypoint: "GatekeeperVendor",
     },
+    ...(mcpPortal ? [{
+      binding: "GATEKEEPER_MCP_PORTAL",
+      service: config.workers.mcpPortal.name,
+      entrypoint: "GatekeeperVendor",
+    }] : []),
   ];
   workshop.kv_namespaces = [
     { binding: "BLUEPRINTS", ...(config.resources.blueprintsKvNamespaceId
@@ -345,11 +379,32 @@ export function generateConfigs(config, bases) {
     CUSTOM_MESSAGE: config.customGatekeeper.message,
   };
 
+  if (mcpPortal) {
+    setCommon(mcpPortal, config, config.workers.mcpPortal.name);
+    mcpPortal.vars = {
+      ...mcpPortal.vars,
+      MCP_PORTAL_URL: config.mcpPortal.url,
+    };
+    if (config.mcpPortal.name) {
+      mcpPortal.vars.MCP_PORTAL_NAME = config.mcpPortal.name;
+    }
+    if (config.mcpPortal.auth) {
+      mcpPortal.vars.MCP_PORTAL_AUTH = config.mcpPortal.auth;
+    }
+    if (config.mcpPortal.trustAnnotations) {
+      mcpPortal.vars.MCP_PORTAL_TRUST_ANNOTATIONS = "true";
+    }
+  }
+
   if (errorReporter) {
     setCommon(errorReporter, config, config.workers.errorReporter.name);
   }
 
-  return { workshop, context, customGatekeeper, ...(errorReporter && { errorReporter }) };
+  return {
+    workshop, context, customGatekeeper,
+    ...(mcpPortal && { mcpPortal }),
+    ...(errorReporter && { errorReporter }),
+  };
 }
 
 async function readJsonc(path) {
@@ -390,6 +445,9 @@ function requireSubmodule() {
 function build(config) {
   run(["--dir", "cloudflare-os", "--filter", "@gadgets/gatekeeper-context", "build"]);
   run(["--dir", "packages/custom-gatekeeper", "run", "build"]);
+  if (config.mcpPortal) {
+    run(["--dir", "cloudflare-os", "--filter", "@gadgets/gatekeeper-mcp-portal", "build"]);
+  }
   if (config.errorReporting.enabled) {
     run(["--dir", "packages/error-reporter", "run", "build"]);
   }
@@ -412,6 +470,7 @@ async function main() {
     context: await readJsonc(join(root, "cloudflare-os/packages/gatekeeper-context/wrangler.jsonc")),
     customGatekeeper: await readJsonc(join(root, "packages/custom-gatekeeper/wrangler.jsonc")),
     errorReporter: await readJsonc(join(root, "packages/error-reporter/wrangler.jsonc")),
+    mcpPortal: await readJsonc(join(root, "cloudflare-os/packages/gatekeeper-mcp-portal/wrangler.jsonc")),
   });
 
   try {
@@ -430,6 +489,10 @@ async function main() {
       join(root, "cloudflare-os/packages/gatekeeper-context"));
     run(["exec", "wrangler", "deploy", "--config", generatedName, ...deployArgs],
       join(root, "packages/custom-gatekeeper"));
+    if (config.mcpPortal) {
+      run(["exec", "wrangler", "deploy", "--config", generatedName, ...deployArgs],
+        join(root, "cloudflare-os/packages/gatekeeper-mcp-portal"));
+    }
     const workshopDeployArgs = [...deployArgs];
     if (!check && config.aiGateway?.enabled) {
       const secretsFile = join(root, ".dev.secrets.tmp");

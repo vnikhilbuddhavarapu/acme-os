@@ -11,6 +11,7 @@ const validConfig = {
     context: { name: "acme-cloudflare-os-context" },
     customGatekeeper: { name: "acme-cloudflare-os-custom" },
     errorReporter: { name: "acme-cloudflare-os-errors" },
+    mcpPortal: { name: "acme-cloudflare-os-mcp-portal" },
   },
   access: {
     issuer: "https://acme.cloudflareaccess.com",
@@ -30,6 +31,11 @@ const validConfig = {
     artifacts: { enabled: true, namespace: "acme-context-collections" },
   },
   customGatekeeper: { name: "Acme", message: "Use the company handbook." },
+  mcpPortal: {
+    url: "https://mcp.example.com/mcp",
+    name: "Example MCP Portal",
+    auth: "oauth",
+  },
   errorReporting: { enabled: true, environment: "production", release: "abc123" },
   resources: {
     blueprintsKvNamespaceId: "blueprints-kv-id",
@@ -49,6 +55,7 @@ async function baseConfigs() {
     workshop: await baseConfig("../cloudflare-os/packages/workshop-backend/wrangler.jsonc"),
     context: await baseConfig("../cloudflare-os/packages/gatekeeper-context/wrangler.jsonc"),
     customGatekeeper: await baseConfig("../packages/custom-gatekeeper/wrangler.jsonc"),
+    mcpPortal: await baseConfig("../cloudflare-os/packages/gatekeeper-mcp-portal/wrangler.jsonc"),
     errorReporter: {
       name: "error-reporter",
       observability: { enabled: true, logs: { invocation_logs: false } },
@@ -156,6 +163,11 @@ test("generates Access-mode Workshop, Context, and custom Gatekeeper configs", a
       service: "acme-cloudflare-os-custom",
       entrypoint: "GatekeeperVendor",
     },
+    {
+      binding: "GATEKEEPER_MCP_PORTAL",
+      service: "acme-cloudflare-os-mcp-portal",
+      entrypoint: "GatekeeperVendor",
+    },
   ]);
   assert.deepEqual(generated.workshop.assets, {
     directory: "../workshop-frontend/dist",
@@ -178,6 +190,11 @@ test("generates Access-mode Workshop, Context, and custom Gatekeeper configs", a
     CUSTOM_NAME: "Acme",
     CUSTOM_MESSAGE: "Use the company handbook.",
   });
+  assert.equal(generated.mcpPortal.name, "acme-cloudflare-os-mcp-portal");
+  assert.equal(generated.mcpPortal.vars.MCP_PORTAL_URL, "https://mcp.example.com/mcp");
+  assert.equal(generated.mcpPortal.vars.MCP_PORTAL_NAME, "Example MCP Portal");
+  assert.equal(generated.mcpPortal.vars.MCP_PORTAL_AUTH, "oauth");
+  assert.equal(generated.mcpPortal.vars.MCP_PORTAL_TRUST_ANNOTATIONS, undefined);
   assert.equal(generated.errorReporter.name, "acme-cloudflare-os-errors");
   assert.deepEqual(generated.workshop.observability.logs, {
     invocation_logs: false,
@@ -284,4 +301,29 @@ test("generates binding-only storage for automatic provisioning", async () => {
   ]);
   assert.deepEqual(generated.workshop.r2_buckets, [{ binding: "BLUEPRINT_CONTENT" }]);
   assert.deepEqual(generated.context.kv_namespaces, [{ binding: "CONTEXT_COLLECTIONS" }]);
+});
+
+
+test("omits MCP Portal when not configured", async () => {
+  const config = structuredClone(validConfig);
+  delete config.mcpPortal;
+  delete config.workers.mcpPortal;
+
+  const generated = generateConfigs(config, await baseConfigs());
+
+  assert.equal(generated.mcpPortal, undefined);
+  assert.equal(generated.workshop.services.some(
+    (service) => service.binding === "GATEKEEPER_MCP_PORTAL"), false);
+});
+
+test("rejects invalid MCP Portal auth mode", () => {
+  const config = structuredClone(validConfig);
+  config.mcpPortal.auth = "invalid";
+  assert.throws(() => validateConfig(config), /mcpPortal.auth/);
+});
+
+test("rejects empty MCP Portal URL", () => {
+  const config = structuredClone(validConfig);
+  config.mcpPortal.url = "  ";
+  assert.throws(() => validateConfig(config), /mcpPortal.url/);
 });

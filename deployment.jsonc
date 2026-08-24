@@ -16,7 +16,8 @@
     },
     "context": { "name": "acme-os-context" },
     "customGatekeeper": { "name": "acme-os-custom-gk" },
-    "errorReporter": { "name": "acme-os-error-reporter" }
+    "errorReporter": { "name": "acme-os-error-reporter" },
+    "mcpPortal": { "name": "acme-os-gk-mcp-portal" }
   },
 
   // This starter deploys Cloudflare Access mode. Cloudflare OS also supports built-in password
@@ -65,6 +66,16 @@
   "customGatekeeper": {
     "name": "ACME Studios",
     "message": "ACME Studios internal integration. Ask the deployment operator before enabling writes."
+  },
+
+  // MCP Server Portal connector. Omit the entire block to hide the connector.
+  // Reference: cloudflare-os/packages/gatekeeper-mcp-portal/README.md
+  "mcpPortal": {
+    "url": "https://mcp.acme-studios.org/mcp",
+    "name": "ACME MCP Portal",
+    "auth": "oauth"
+    // "trustAnnotations": false  (default — portal is an aggregator, annotations unvetted)
+    // For "token" auth: set MCP_PORTAL_TOKEN via `wrangler secret put` on the portal worker.
   },
 
   // Explicit backend issue reports go to a private Worker that emits structured console errors.
