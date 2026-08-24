@@ -1,0 +1,21 @@
+scripts/demo/README.md
+  s_a10f45aa10a9ca::t_c20d0ec77016c5 1-69
+scripts/demo/deny-path-demo.mjs
+  s_a10f45aa10a9ca::t_8f81fcc1b4d124 1-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "871d24c9fda53c681a70486e077a2d18dddc83c0",
+  "prompts": {},
+  "sessions": {
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
