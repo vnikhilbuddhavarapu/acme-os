@@ -394,6 +394,13 @@ export function generateConfigs(config, bases) {
     if (config.mcpPortal.trustAnnotations) {
       mcpPortal.vars.MCP_PORTAL_TRUST_ANNOTATIONS = "true";
     }
+    const workshopRoute = config.workers.workshop.route;
+    const workshopOrigin = workshopRoute.customDomain
+      ? `https://${workshopRoute.customDomain}`
+      : workshopRoute.workersDev
+        ? `https://${config.workers.workshop.name}.${config.accountId}.workers.dev`
+        : "https://example.com";
+    mcpPortal.vars.BASE_URL = `${workshopOrigin}/gatekeeper/mcp-portal`;
   }
 
   if (errorReporter) {

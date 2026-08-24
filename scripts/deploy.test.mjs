@@ -195,6 +195,7 @@ test("generates Access-mode Workshop, Context, and custom Gatekeeper configs", a
   assert.equal(generated.mcpPortal.vars.MCP_PORTAL_NAME, "Example MCP Portal");
   assert.equal(generated.mcpPortal.vars.MCP_PORTAL_AUTH, "oauth");
   assert.equal(generated.mcpPortal.vars.MCP_PORTAL_TRUST_ANNOTATIONS, undefined);
+  assert.equal(generated.mcpPortal.vars.BASE_URL, "https://os.example.com/gatekeeper/mcp-portal");
   assert.equal(generated.errorReporter.name, "acme-cloudflare-os-errors");
   assert.deepEqual(generated.workshop.observability.logs, {
     invocation_logs: false,
