@@ -14,12 +14,14 @@ const generatedPaths = {
   customGatekeeper: join(root, "packages/custom-gatekeeper", generatedName),
   errorReporter: join(root, "packages/error-reporter", generatedName),
   mcpPortal: join(root, "cloudflare-os/packages/gatekeeper-mcp-portal", generatedName),
+  router: join(root, "cloudflare-os/packages/router", generatedName),
 };
 const defaultContextArtifactsNamespace = "gatekeeper-context-collections";
 
 const requiredPaths = [
   "accountId",
   "workers.workshop.name",
+  "workers.router.name",
   "workers.context.name",
   "workers.customGatekeeper.name",
   "access.issuer",
@@ -134,19 +136,19 @@ export function validateConfig(config) {
     throw new Error("Worker names must use lowercase letters, numbers, and hyphens.");
   }
 
-  const route = config.workers.workshop.route;
-  if (!route || Boolean(route.workersDev) === Boolean(route.customDomain)) {
-    throw new Error("Set exactly one Workshop route: workersDev or customDomain.");
-  }
-  if (route.workersDev !== undefined && route.workersDev !== true) {
-    throw new Error("Workshop workersDev must be boolean true when selected.");
-  }
-  if (route.customDomain !== undefined && typeof route.customDomain !== "string") {
-    throw new Error("Workshop customDomain must be a string.");
-  }
   const hostnamePattern = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-  if (route.customDomain && !hostnamePattern.test(route.customDomain)) {
-    throw new Error("Workshop customDomain must be a lowercase hostname.");
+  const routerRoute = config.workers.router.route;
+  if (!routerRoute || Boolean(routerRoute.workersDev) === Boolean(routerRoute.customDomain)) {
+    throw new Error("Set exactly one Router route: workersDev or customDomain.");
+  }
+  if (routerRoute.workersDev !== undefined && routerRoute.workersDev !== true) {
+    throw new Error("Router workersDev must be boolean true when selected.");
+  }
+  if (routerRoute.customDomain !== undefined && typeof routerRoute.customDomain !== "string") {
+    throw new Error("Router customDomain must be a string.");
+  }
+  if (routerRoute.customDomain && !hostnamePattern.test(routerRoute.customDomain)) {
+    throw new Error("Router customDomain must be a lowercase hostname.");
   }
 
   const issuer = new URL(config.access.issuer);
@@ -282,11 +284,12 @@ export function generateConfigs(config, bases) {
   const context = structuredClone(bases.context);
   const customGatekeeper = structuredClone(bases.customGatekeeper);
   const mcpPortal = config.mcpPortal ? structuredClone(bases.mcpPortal) : undefined;
+  const router = structuredClone(bases.router);
   const errorReporter = config.errorReporting.enabled
     ? structuredClone(bases.errorReporter)
     : undefined;
 
-  setCommon(workshop, config, config.workers.workshop.name, config.workers.workshop.route);
+  setCommon(workshop, config, config.workers.workshop.name);
   workshop.vars = {
     ADMINS: config.access.admins,
     CF_ACCESS_ISS: config.access.issuer.replace(/\/$/, ""),
@@ -342,13 +345,6 @@ export function generateConfigs(config, bases) {
       service: config.workers.mcpPortal.name,
       entrypoint: "GatekeeperVendor",
     }] : []),
-    // HTTP binding (default export) for /gatekeeper/mcp-portal/* callback paths.
-    // The GatekeeperVendor entrypoint is RPC-only; the public fetch handler lives
-    // in the worker's default export.
-    ...(mcpPortal ? [{
-      binding: "GATEKEEPER_HTTP_MCP_PORTAL",
-      service: config.workers.mcpPortal.name,
-    }] : []),
   ];
   workshop.kv_namespaces = [
     { binding: "BLUEPRINTS", ...(config.resources.blueprintsKvNamespaceId
@@ -360,11 +356,7 @@ export function generateConfigs(config, bases) {
     { binding: "BLUEPRINT_CONTENT", ...(config.resources.blueprintContentBucket
       ? { bucket_name: config.resources.blueprintContentBucket } : {}) },
   ];
-  workshop.assets = {
-    directory: "../workshop-frontend/dist",
-    not_found_handling: "single-page-application",
-    run_worker_first: ["/api", "/api/*", "/blueprint-screenshot/*"],
-  };
+  delete workshop.assets;
 
   setCommon(context, config, config.workers.context.name);
   context.kv_namespaces = [
@@ -401,21 +393,43 @@ export function generateConfigs(config, bases) {
     if (config.mcpPortal.trustAnnotations) {
       mcpPortal.vars.MCP_PORTAL_TRUST_ANNOTATIONS = "true";
     }
-    const workshopRoute = config.workers.workshop.route;
-    const workshopOrigin = workshopRoute.customDomain
-      ? `https://${workshopRoute.customDomain}`
-      : workshopRoute.workersDev
-        ? `https://${config.workers.workshop.name}.${config.accountId}.workers.dev`
+    const routerRoute = config.workers.router.route;
+    const routerOrigin = routerRoute.customDomain
+      ? `https://${routerRoute.customDomain}`
+      : routerRoute.workersDev
+        ? `https://${config.workers.router.name}.${config.accountId}.workers.dev`
         : "https://example.com";
-    mcpPortal.vars.BASE_URL = `${workshopOrigin}/gatekeeper/mcp-portal`;
+    mcpPortal.vars.BASE_URL = `${routerOrigin}/gatekeeper/mcp-portal`;
   }
+
+  // Router is the public origin: custom domain, frontend assets, and path-prefix routing
+  // to the workshop backend and gatekeeper default-export fetch handlers.
+  setCommon(router, config, config.workers.router.name, config.workers.router.route);
+  router.services = [
+    {
+      binding: "WORKSHOP_BACKEND",
+      service: config.workers.workshop.name,
+    },
+    {
+      binding: "GATEKEEPER_CONTEXT",
+      service: config.workers.context.name,
+    },
+    {
+      binding: "GATEKEEPER_CUSTOM",
+      service: config.workers.customGatekeeper.name,
+    },
+    ...(mcpPortal ? [{
+      binding: "GATEKEEPER_MCP_PORTAL",
+      service: config.workers.mcpPortal.name,
+    }] : []),
+  ];
 
   if (errorReporter) {
     setCommon(errorReporter, config, config.workers.errorReporter.name);
   }
 
   return {
-    workshop, context, customGatekeeper,
+    workshop, context, customGatekeeper, router,
     ...(mcpPortal && { mcpPortal }),
     ...(errorReporter && { errorReporter }),
   };
@@ -470,6 +484,7 @@ function build(config) {
     VITE_CF_ACCESS_MODE: "true",
   });
   run(["--dir", "cloudflare-os", "--filter", "@gadgets/workshop-backend", "build"]);
+  run(["--dir", "cloudflare-os", "--filter", "@gadgets/router", "build"]);
 }
 
 async function main() {
@@ -485,6 +500,7 @@ async function main() {
     customGatekeeper: await readJsonc(join(root, "packages/custom-gatekeeper/wrangler.jsonc")),
     errorReporter: await readJsonc(join(root, "packages/error-reporter/wrangler.jsonc")),
     mcpPortal: await readJsonc(join(root, "cloudflare-os/packages/gatekeeper-mcp-portal/wrangler.jsonc")),
+    router: await readJsonc(join(root, "cloudflare-os/packages/router/wrangler.jsonc")),
   });
 
   try {
@@ -516,6 +532,8 @@ async function main() {
     }
     run(["exec", "wrangler", "deploy", "--config", generatedName, ...workshopDeployArgs],
       join(root, "cloudflare-os/packages/workshop-backend"));
+    run(["exec", "wrangler", "deploy", "--config", generatedName, ...deployArgs],
+      join(root, "cloudflare-os/packages/router"));
   } finally {
     await Promise.all(Object.values(generatedPaths).map((path) => rm(path, { force: true })));
   }

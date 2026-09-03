@@ -7,7 +7,8 @@ import { generateConfigs, validateConfig } from "./deploy.mjs";
 const validConfig = {
   accountId: "0123456789abcdef0123456789abcdef",
   workers: {
-    workshop: { name: "acme-cloudflare-os", route: { customDomain: "os.example.com" } },
+    workshop: { name: "acme-cloudflare-os" },
+    router: { name: "acme-cloudflare-os-router", route: { customDomain: "os.example.com" } },
     context: { name: "acme-cloudflare-os-context" },
     customGatekeeper: { name: "acme-cloudflare-os-custom" },
     errorReporter: { name: "acme-cloudflare-os-errors" },
@@ -56,6 +57,7 @@ async function baseConfigs() {
     context: await baseConfig("../cloudflare-os/packages/gatekeeper-context/wrangler.jsonc"),
     customGatekeeper: await baseConfig("../packages/custom-gatekeeper/wrangler.jsonc"),
     mcpPortal: await baseConfig("../cloudflare-os/packages/gatekeeper-mcp-portal/wrangler.jsonc"),
+    router: await baseConfig("../cloudflare-os/packages/router/wrangler.jsonc"),
     errorReporter: {
       name: "error-reporter",
       observability: { enabled: true, logs: { invocation_logs: false } },
@@ -83,7 +85,7 @@ test("rejects destructive or malformed deployment values", () => {
   assert.throws(() => validateConfig(stringBoolean), /boolean/i);
 
   const invalidDomain = structuredClone(validConfig);
-  invalidDomain.workers.workshop.route.customDomain = "os.example.com/path";
+  invalidDomain.workers.router.route.customDomain = "os.example.com/path";
   assert.throws(() => validateConfig(invalidDomain), /hostname/i);
 
   const numericGateway = structuredClone(validConfig);
@@ -135,9 +137,7 @@ test("generates Access-mode Workshop, Context, and custom Gatekeeper configs", a
   const generated = generateConfigs(validConfig, await baseConfigs());
 
   assert.equal(generated.workshop.name, "acme-cloudflare-os");
-  assert.deepEqual(generated.workshop.routes, [
-    { pattern: "os.example.com", custom_domain: true },
-  ]);
+  assert.equal(generated.workshop.routes, undefined);
   assert.deepEqual(generated.workshop.vars.ADMINS, ["admin@example.com"]);
   assert.equal(generated.workshop.vars.CF_ACCESS_ISS, validConfig.access.issuer);
   assert.equal(generated.workshop.vars.CF_ACCESS_AUD, validConfig.access.audience);
@@ -168,16 +168,8 @@ test("generates Access-mode Workshop, Context, and custom Gatekeeper configs", a
       service: "acme-cloudflare-os-mcp-portal",
       entrypoint: "GatekeeperVendor",
     },
-    {
-      binding: "GATEKEEPER_HTTP_MCP_PORTAL",
-      service: "acme-cloudflare-os-mcp-portal",
-    },
   ]);
-  assert.deepEqual(generated.workshop.assets, {
-    directory: "../workshop-frontend/dist",
-    not_found_handling: "single-page-application",
-      run_worker_first: ["/api", "/api/*", "/blueprint-screenshot/*"],
-  });
+  assert.equal(generated.workshop.assets, undefined);
   assert.deepEqual(generated.workshop.kv_namespaces, [
     { binding: "BLUEPRINTS", id: "blueprints-kv-id" },
     { binding: "AVATARS", id: "avatars-kv-id" },
@@ -200,6 +192,16 @@ test("generates Access-mode Workshop, Context, and custom Gatekeeper configs", a
   assert.equal(generated.mcpPortal.vars.MCP_PORTAL_AUTH, "oauth");
   assert.equal(generated.mcpPortal.vars.MCP_PORTAL_TRUST_ANNOTATIONS, undefined);
   assert.equal(generated.mcpPortal.vars.BASE_URL, "https://os.example.com/gatekeeper/mcp-portal");
+  assert.equal(generated.router.name, "acme-cloudflare-os-router");
+  assert.deepEqual(generated.router.routes, [
+    { pattern: "os.example.com", custom_domain: true },
+  ]);
+  assert.deepEqual(generated.router.services, [
+    { binding: "WORKSHOP_BACKEND", service: "acme-cloudflare-os" },
+    { binding: "GATEKEEPER_CONTEXT", service: "acme-cloudflare-os-context" },
+    { binding: "GATEKEEPER_CUSTOM", service: "acme-cloudflare-os-custom" },
+    { binding: "GATEKEEPER_MCP_PORTAL", service: "acme-cloudflare-os-mcp-portal" },
+  ]);
   assert.equal(generated.errorReporter.name, "acme-cloudflare-os-errors");
   assert.deepEqual(generated.workshop.observability.logs, {
     invocation_logs: false,
@@ -319,8 +321,8 @@ test("omits MCP Portal when not configured", async () => {
   assert.equal(generated.mcpPortal, undefined);
   assert.equal(generated.workshop.services.some(
     (service) => service.binding === "GATEKEEPER_MCP_PORTAL"), false);
-  assert.equal(generated.workshop.services.some(
-    (service) => service.binding === "GATEKEEPER_HTTP_MCP_PORTAL"), false);
+  assert.equal(generated.router.services.some(
+    (service) => service.binding === "GATEKEEPER_MCP_PORTAL"), false);
 });
 
 test("rejects invalid MCP Portal auth mode", () => {

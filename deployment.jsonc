@@ -6,11 +6,12 @@
   // Worker names are permanent service identities. Keep them unique within the account.
   // Reference: docs/customization.md#workers-and-routing
   "workers": {
-    "workshop": {
-      "name": "acme-os-workshop",
+    "workshop": { "name": "acme-os-workshop" },
+    "router": {
+      "name": "acme-os-router",
 
-      // Production: use a hostname in an active Cloudflare zone. Wrangler creates DNS and TLS.
-      // Evaluation: replace this with "route": { "workersDev": true }.
+      // The router is the public origin. It serves the frontend assets and routes
+      // /api/* and /gatekeeper/* to the workshop backend and gatekeeper workers.
       // https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
       "route": { "customDomain": "os.acme-studios.org" }
     },
