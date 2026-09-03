@@ -1,0 +1,25 @@
+cloudflare-os
+  s_a10f45aa10a9ca::t_a0894aba01c8e5 1
+deployment.jsonc
+  s_a10f45aa10a9ca::t_e5fd55d1e8177b 9-11,13-14
+scripts/deploy.mjs
+  s_a10f45aa10a9ca::t_61b166b0285f6d 17,24,139-142,144-145,147-148,150-151,287,292,359,396-400,402,405-426,432,487,503,535-536
+scripts/deploy.test.mjs
+  s_a10f45aa10a9ca::t_40391acf5778d9 10-11,60,88,140,172,195-204,324-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0fca6919624ccbead1f37048b215acca2f68b2d2",
+  "prompts": {},
+  "sessions": {
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
