@@ -1,107 +1,95 @@
 {
   // Cloudflare account that owns every Worker and provisioned resource.
-  // Find it: https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/
   "accountId": "904dd3d810f6f1dd3801d8b940bd747a",
 
+  // The deployment's public origin, used for PUBLIC_BASE_URL and to scope Context data.
+  // null derives it from workers.router.route.customDomain.
+  "publicBaseUrl": null,
+
   // Worker names are permanent service identities. Keep them unique within the account.
-  // Reference: docs/customization.md#workers-and-routing
   "workers": {
-    "workshop": { "name": "acme-os-workshop" },
+    // Owns the public URL and serves the frontend. Proxies /api and /blueprint-screenshot to the
+    // Workshop, and /gatekeeper/<name> to the matching Gatekeeper.
     "router": {
       "name": "acme-os-router",
-
-      // The router is the public origin. It serves the frontend assets and routes
-      // /api/* and /gatekeeper/* to the workshop backend and gatekeeper workers.
-      // https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
-      "route": { "customDomain": "os.acme-studios.org" }
+      "route": { "customDomain": "os.acme-studios.org" },
     },
+
+    // The Workshop backend. No public route: the router reaches it over a service binding.
+    "workshop": { "name": "acme-os-workshop" },
     "context": { "name": "acme-os-context" },
+
+    // The Scheduler Gatekeeper, which gives agents scheduled and recurring work.
+    "scheduler": { "name": "acme-os-scheduler" },
+
     "customGatekeeper": { "name": "acme-os-custom-gk" },
+
+    // MCP Portal gatekeeper. Omit to hide the connector.
+    "mcpPortal": { "name": "acme-os-gk-mcp-portal" },
+
     "errorReporter": { "name": "acme-os-error-reporter" },
-    "mcpPortal": { "name": "acme-os-gk-mcp-portal" }
   },
 
-  // This starter deploys Cloudflare Access mode. Cloudflare OS also supports built-in password
-  // accounts and auth Gatekeeper sign-in; see the reference below before switching. The audience
-  // comes from the self-hosted Access application protecting the Workshop hostname.
-  // "admins" gates /admin in every sign-in method.
-  // Reference: docs/customization.md#sign-in-methods
+  // Cloudflare Access mode. The audience comes from the self-hosted Access application
+  // protecting the public hostname. "admins" gates /admin in every sign-in method.
   "access": {
     "issuer": "https://acme-studios.cloudflareaccess.com",
     "audience": "cde90c21ea4158d33a00978718b9297447662c829141c81ec406c37b1913804c",
-    "admins": ["nikhil@acme-studios.org"]
+    "admins": ["nikhil@acme-studios.org"],
   },
 
-  // Optional platform-funded model catalog. Leave disabled to deploy without AI setup.
-  // When enabled, replace every placeholder and install CF_AI_GATEWAY_API_TOKEN separately.
-  // Reference: docs/customization.md#ai-models
+  // Model catalog served through Cloudflare AI Gateway.
   "aiGateway": {
     "enabled": true,
     "name": "acme-os-gateway",
     "accountId": "904dd3d810f6f1dd3801d8b940bd747a",
     "providers": ["anthropic", "openai", "google", "cloudflare"],
-
-    // "direct" sends Workers AI to its REST endpoint. "gateway" adds AI Gateway logs.
-    "workersAi": { "mode": "gateway", "gateway": "acme-os-gateway" }
   },
 
   "context": {
     // Isolates Context data shared by this Workshop deployment.
     "sharingDomain": "production",
-
-    // null: Wrangler provisions and remembers a KV namespace on first deploy.
-    // string: bind an existing namespace by ID.
-    "kvNamespaceId": null
-
-    // Optional Git-compatible storage for Context collections. To enable it, add a comma after
-    // kvNamespaceId and uncomment this object. Requires Artifacts account access.
-    // "artifacts": {
-    //   "enabled": true,
-    //   // Optional override; defaults to "gatekeeper-context-collections".
-    //   "namespace": "custom-context-collections"
-    // }
+    "kvNamespaceId": null,
   },
 
   // Displayed to agents when the example custom integration is enabled in /admin.
-  // Reference: docs/customization.md#custom-gatekeepers
   "customGatekeeper": {
     "name": "ACME Studios",
-    "message": "ACME Studios internal integration. Ask the deployment operator before enabling writes."
+    "message": "ACME Studios internal integration. Ask the deployment operator before enabling writes.",
   },
 
   // MCP Server Portal connector. Omit the entire block to hide the connector.
-  // Reference: cloudflare-os/packages/gatekeeper-mcp-portal/README.md
   "mcpPortal": {
     "url": "https://mcp.acme-studios.org/mcp",
     "name": "ACME MCP Portal",
-    "auth": "oauth"
+    "auth": "oauth",
     // "trustAnnotations": false  (default — portal is an aggregator, annotations unvetted)
     // For "token" auth: set MCP_PORTAL_TOKEN via `wrangler secret put` on the portal worker.
   },
 
+  // Per-tier model allowlist. JSON string injected as TIERS_CONFIG env var on the workshop.
+  // Reference: cloudflare-os/packages/workshop-backend/src/tiers.ts
+  "tiersConfig": "{\"frontier\":{\"groups\":[\"ai-admins\"],\"default\":\"@cf/zai-org/glm-5.2\",\"models\":[\"claude-opus-5\",\"claude-sonnet-5\",\"claude-fable-5\",\"gpt-5.6-sol\",\"gpt-5.6-terra\",\"gpt-5.6-luna\",\"@cf/moonshotai/kimi-k2.7-code\",\"@cf/zai-org/glm-5.2\",\"@cf/deepseek-ai/deepseek-v4-flash-0731\",\"@cf/moonshotai/kimi-k2.6\"]},\"standard\":{\"groups\":[\"ai-users\"],\"default\":\"@cf/zai-org/glm-5.2\",\"models\":[\"@cf/moonshotai/kimi-k2.7-code\",\"@cf/zai-org/glm-5.2\",\"@cf/deepseek-ai/deepseek-v4-flash-0731\",\"@cf/moonshotai/kimi-k2.6\",\"@cf/meta/llama-4-scout-17b-16e-instruct\",\"@cf/google/gemma-4-26b-a4b-it\",\"@cf/nvidia/nemotron-3-120b-a12b\"]},\"restricted\":{\"groups\":[],\"default\":\"@cf/meta/llama-3.3-70b-instruct-fp8-fast\",\"models\":[\"@cf/meta/llama-3.3-70b-instruct-fp8-fast\"]}}",
+
   // Explicit backend issue reports go to a private Worker that emits structured console errors.
-  // Set release to a commit/version when your deployment pipeline has one.
-  // Reference: docs/observability.md#quick-start
   "errorReporting": {
     "enabled": true,
     "environment": "production",
-    "release": null
+    "release": null,
   },
 
-  // null values use Wrangler automatic provisioning. Set IDs/names to reuse owned resources.
-  // https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning
+  // null values use Wrangler automatic provisioning.
   "resources": {
     "blueprintsKvNamespaceId": null,
     "avatarsKvNamespaceId": null,
-    "blueprintContentBucket": null
+    "blueprintContentBucket": null,
   },
 
   // Structured custom logs stay enabled. Invocation logs and traces are separate volume controls.
-  // https://developers.cloudflare.com/workers/observability/logs/workers-logs/
   "observability": {
     "enabled": true,
     "headSamplingRate": 1,
     "logs": { "invocationLogs": false },
-    "traces": { "enabled": true, "headSamplingRate": 0.1 }
-  }
+    "traces": { "enabled": true, "headSamplingRate": 0.1 },
+  },
 }
