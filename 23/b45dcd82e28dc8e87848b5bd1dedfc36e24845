@@ -1,0 +1,27 @@
+.github/workflows/ci.yml
+  s_a10f45aa10a9ca::t_eaedb4a3f24119 1-45
+config/tiers.json
+  s_a10f45aa10a9ca::t_4a49b7db36fe33 1-36
+docs/auth.md
+  s_a10f45aa10a9ca::t_db0ee7bcffe0e2 1-42
+scripts/demo/README.md
+  s_a10f45aa10a9ca::t_1b6eeb5d110dc9 1-69
+scripts/demo/deny-path-demo.mjs
+  s_a10f45aa10a9ca::t_a2e70288b0a431 1-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "23b45dcd82e28dc8e87848b5bd1dedfc36e24845",
+  "prompts": {},
+  "sessions": {
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
