@@ -1,0 +1,19 @@
+cloudflare-os
+  s_a10f45aa10a9ca::t_21138e8416d041 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e49cc9e33214598d950d40c38e2ba9dc4f34dcde",
+  "prompts": {},
+  "sessions": {
+    "s_a10f45aa10a9ca": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "exciting-polonium",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
