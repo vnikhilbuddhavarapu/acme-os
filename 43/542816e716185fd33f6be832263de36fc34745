@@ -1,0 +1,21 @@
+package.json
+  s_37e67b7ed98f1f::t_de08976c954a42 11
+scripts/deploy.ts
+  s_37e67b7ed98f1f::t_a04596caf3b013 1004-1016
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "43542816e716185fd33f6be832263de36fc34745",
+  "prompts": {},
+  "sessions": {
+    "s_37e67b7ed98f1f": {
+      "agent_id": {
+        "tool": "devin",
+        "id": "s_37e67b7ed98f1f",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
