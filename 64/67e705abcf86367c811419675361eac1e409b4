@@ -1,0 +1,19 @@
+.gitmodules
+  s_d769310f90ce77::t_d5db71899adaaf 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6467e705abcf86367c811419675361eac1e409b4",
+  "prompts": {},
+  "sessions": {
+    "s_d769310f90ce77": {
+      "agent_id": {
+        "tool": "devin",
+        "id": "s_d769310f90ce77",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
