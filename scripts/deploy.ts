@@ -1001,7 +1001,19 @@ async function main(): Promise<void> {
       );
     }
     const check = process.argv.includes("--check");
-    if (check) run(["test"]);
+    if (check) {
+      // In --check mode, run only the starter's own deploy tests. The full `pnpm test` (which
+      // includes kernel tests via `vp run`) is run in CI's "Starter test" step and would fail
+      // here because the kernel's `@gadgets/scripts` test task needs `gadgets-with-timeout` which
+      // isn't on PATH when invoked from the starter root.
+      runCommand(
+        process.execPath,
+        ["--test", "scripts/**/*.test.ts"],
+        root,
+        process.env,
+        "node --test scripts/**/*.test.ts",
+      );
+    }
     build(config);
     const deployArgs = check ? ["--dry-run"] : [];
     if (config.errorReporting.enabled) {
