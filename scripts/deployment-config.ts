@@ -14,11 +14,19 @@ import type {
 } from "../cloudflare-os/scripts/release/manifest-lib.ts";
 
 /** A model provider the Workshop can serve through AI Gateway with deployment-managed keys. */
-export type AiGatewayProvider = "anthropic" | "openai" | "google" | "cloudflare";
+export type AiGatewayProvider =
+  | "anthropic"
+  | "openai"
+  | "google"
+  | "cloudflare";
 
 /** Every provider {@link AiGatewayProvider} allows, for validation and for error messages. */
-export const AI_GATEWAY_PROVIDERS: readonly AiGatewayProvider[] =
-  ["anthropic", "openai", "google", "cloudflare"];
+export const AI_GATEWAY_PROVIDERS: readonly AiGatewayProvider[] = [
+  "anthropic",
+  "openai",
+  "google",
+  "cloudflare",
+];
 
 /**
  * The public address of the router Worker. Exactly one field is set; `validateConfig` enforces
@@ -112,6 +120,8 @@ export interface DeploymentConfig {
     context: { name: string };
     scheduler: { name: string };
     customGatekeeper: { name: string };
+    /** MCP Portal gatekeeper. Omit the entire entry to hide the connector. */
+    mcpPortal?: { name: string };
     /** Only required when `errorReporting.enabled`. */
     errorReporter?: { name: string };
   };
@@ -120,8 +130,29 @@ export interface DeploymentConfig {
   context: ContextConfig;
   /** Display text the example custom Gatekeeper serves to agents. */
   customGatekeeper: { name: string; message: string };
+  /** MCP Portal connector. Omit the entire block to hide the connector. */
+  mcpPortal?: {
+    /** Portal MCP endpoint URL. */
+    url: string;
+    /** Display name shown in the Connectors UI. */
+    name: string;
+    /** Auth mode: "oauth" or "token". */
+    auth: "oauth" | "token";
+    /** Whether the portal's tool annotations are trusted for auto-apply. Default false. */
+    trustAnnotations?: boolean;
+  };
+  /**
+   * Per-tier model allowlist mapping. Omit or null to disable tier-based filtering (all models
+   * available to all users). The value is a JSON string injected as the `TIERS_CONFIG` env var.
+   * Reference: cloudflare-os/packages/workshop-backend/src/tiers.ts
+   */
+  tiersConfig?: string | null;
   /** Private explicit-issue destination. */
-  errorReporting: { enabled: boolean; environment?: string; release?: string | null };
+  errorReporting: {
+    enabled: boolean;
+    environment?: string;
+    release?: string | null;
+  };
   /** Workshop KV/R2. `null` requests Wrangler automatic provisioning. */
   resources: {
     blueprintsKvNamespaceId: string | null;
@@ -151,29 +182,30 @@ export interface ProdObservabilityConfig extends ObservabilityConfig {
  *
  * `assets` is *not* redeclared -- upstream's is already the shape written here.
  */
-export type ProdWranglerConfig =
-  Omit<WranglerConfig, "observability" | "artifacts" | "kv_namespaces" | "r2_buckets">
-  & {
-    /** KV bindings. `id` absent requests Wrangler automatic provisioning. */
-    kv_namespaces?: (BindingDecl & { id?: string })[];
-    /** R2 bindings. `bucket_name` absent requests Wrangler automatic provisioning. */
-    r2_buckets?: (BindingDecl & { bucket_name?: string })[];
-    /** The deployment's account, pinned so a stray `CLOUDFLARE_ACCOUNT_ID` cannot redirect it. */
-    account_id?: string;
-    /** Whether the Worker answers on the account's workers.dev subdomain. */
-    workers_dev?: boolean;
-    /** Custom-domain routes. Wrangler creates DNS and TLS for each. */
-    routes?: { pattern: string; custom_domain: boolean }[];
-    /** Turned off on every Worker: a preview URL is an unauthenticated path around Access. */
-    preview_urls?: boolean;
-    observability?: ProdObservabilityConfig;
-    /** Workers AI. Both the AI Gateway transport and what webFetch's `toMarkdown()` runs on. */
-    ai?: BindingDecl;
-    /** Secrets wrangler refuses to deploy without. Emitted only when one is genuinely needed. */
-    secrets?: { required: string[] };
-    /** Artifacts namespaces. An array, unlike upstream's single-binding declaration. */
-    artifacts?: { binding: string; namespace: string }[];
-  };
+export type ProdWranglerConfig = Omit<
+  WranglerConfig,
+  "observability" | "artifacts" | "kv_namespaces" | "r2_buckets"
+> & {
+  /** KV bindings. `id` absent requests Wrangler automatic provisioning. */
+  kv_namespaces?: (BindingDecl & { id?: string })[];
+  /** R2 bindings. `bucket_name` absent requests Wrangler automatic provisioning. */
+  r2_buckets?: (BindingDecl & { bucket_name?: string })[];
+  /** The deployment's account, pinned so a stray `CLOUDFLARE_ACCOUNT_ID` cannot redirect it. */
+  account_id?: string;
+  /** Whether the Worker answers on the account's workers.dev subdomain. */
+  workers_dev?: boolean;
+  /** Custom-domain routes. Wrangler creates DNS and TLS for each. */
+  routes?: { pattern: string; custom_domain: boolean }[];
+  /** Turned off on every Worker: a preview URL is an unauthenticated path around Access. */
+  preview_urls?: boolean;
+  observability?: ProdObservabilityConfig;
+  /** Workers AI. Both the AI Gateway transport and what webFetch's `toMarkdown()` runs on. */
+  ai?: BindingDecl;
+  /** Secrets wrangler refuses to deploy without. Emitted only when one is genuinely needed. */
+  secrets?: { required: string[] };
+  /** Artifacts namespaces. An array, unlike upstream's single-binding declaration. */
+  artifacts?: { binding: string; namespace: string }[];
+};
 
 /** The generated configs, keyed as `deployment.jsonc` keys them. */
 export interface GeneratedConfigs {
@@ -182,6 +214,8 @@ export interface GeneratedConfigs {
   context: ProdWranglerConfig;
   scheduler: ProdWranglerConfig;
   customGatekeeper: ProdWranglerConfig;
+  /** Absent when `mcpPortal` is not configured. */
+  mcpPortal?: ProdWranglerConfig;
   /** Absent when `errorReporting.enabled` is false. */
   errorReporter?: ProdWranglerConfig;
 }
@@ -193,6 +227,7 @@ export interface BaseConfigs {
   context: ProdWranglerConfig;
   scheduler: ProdWranglerConfig;
   customGatekeeper: ProdWranglerConfig;
+  mcpPortal: ProdWranglerConfig;
   errorReporter: ProdWranglerConfig;
 }
 

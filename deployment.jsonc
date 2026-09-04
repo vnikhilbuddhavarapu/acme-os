@@ -1,121 +1,95 @@
 {
   // Cloudflare account that owns every Worker and provisioned resource.
-  // Find it: https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/
-  "accountId": "<CLOUDFLARE_ACCOUNT_ID>",
+  "accountId": "904dd3d810f6f1dd3801d8b940bd747a",
 
   // The deployment's public origin, used for PUBLIC_BASE_URL and to scope Context data.
   // null derives it from workers.router.route.customDomain.
-  // Required when the router uses workersDev: the account's workers.dev subdomain is not
-  // knowable from this file. Write it as a bare origin, no path and no trailing slash --
-  // "https://<router-name>.<subdomain>.workers.dev".
   "publicBaseUrl": null,
 
   // Worker names are permanent service identities. Keep them unique within the account.
-  // Reference: docs/customization.md#workers-and-routing
   "workers": {
     // Owns the public URL and serves the frontend. Proxies /api and /blueprint-screenshot to the
     // Workshop, and /gatekeeper/<name> to the matching Gatekeeper.
     "router": {
-      "name": "<ROUTER_WORKER_NAME>",
-
-      // Production: use a hostname in an active Cloudflare zone. Wrangler creates DNS and TLS.
-      // Evaluation: replace this with "route": { "workersDev": true } and set publicBaseUrl above.
-      // https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
-      "route": { "customDomain": "os.example.com" }
+      "name": "acme-os-router",
+      "route": { "customDomain": "os.acme-studios.org" },
     },
 
     // The Workshop backend. No public route: the router reaches it over a service binding.
-    "workshop": { "name": "<WORKSHOP_WORKER_NAME>" },
-    "context": { "name": "<CONTEXT_WORKER_NAME>" },
+    "workshop": { "name": "acme-os-workshop" },
+    "context": { "name": "acme-os-context" },
 
-    // The Scheduler Gatekeeper, which gives agents scheduled and recurring work. Ambient like
-    // the Context Gatekeeper
-    "scheduler": { "name": "<SCHEDULER_WORKER_NAME>" },
+    // The Scheduler Gatekeeper, which gives agents scheduled and recurring work.
+    "scheduler": { "name": "acme-os-scheduler" },
 
-    "customGatekeeper": { "name": "<CUSTOM_GATEKEEPER_WORKER_NAME>" },
-    "errorReporter": { "name": "<ERROR_REPORTER_WORKER_NAME>" }
+    "customGatekeeper": { "name": "acme-os-custom-gk" },
+
+    // MCP Portal gatekeeper. Omit to hide the connector.
+    "mcpPortal": { "name": "acme-os-gk-mcp-portal" },
+
+    "errorReporter": { "name": "acme-os-error-reporter" },
   },
 
-  // This starter deploys Cloudflare Access mode. Cloudflare OS also supports built-in password
-  // accounts and auth Gatekeeper sign-in; see the reference below before switching. The audience
-  // comes from the self-hosted Access application protecting the public hostname.
-  // "admins" gates /admin in every sign-in method.
-  // Reference: docs/customization.md#sign-in-methods
+  // Cloudflare Access mode. The audience comes from the self-hosted Access application
+  // protecting the public hostname. "admins" gates /admin in every sign-in method.
   "access": {
-    "issuer": "https://<TEAM_NAME>.cloudflareaccess.com",
-    "audience": "<ACCESS_AUDIENCE>",
-    "admins": ["<ADMIN_EMAIL>"]
+    "issuer": "https://acme-studios.cloudflareaccess.com",
+    "audience": "cde90c21ea4158d33a00978718b9297447662c829141c81ec406c37b1913804c",
+    "admins": ["nikhil@acme-studios.org"],
   },
 
-  // Model catalog served through Cloudflare AI Gateway. Enabled by default: the Workshop reaches
-  // the gateway over its WORKERS_AI binding, which is pre-authenticated inside your own account,
-  // so no API token is needed.
-  // Reference: docs/customization.md#ai-models
+  // Model catalog served through Cloudflare AI Gateway.
   "aiGateway": {
     "enabled": true,
-
-    // Your account's AI Gateway. "default" is the one Cloudflare creates for the account.
-    // Migrating from the hosted deploy? Use the gateway that flow created: "<instance>-ai"
-    // (e.g. "cloudflareos-ai"), named after your instance. See docs/migrate-from-hosted.md.
-    "name": "default",
-
-    // null reuses the top-level accountId. Set only if the gateway lives in another account --
-    // that requires CF_AI_GATEWAY_API_TOKEN, since the binding cannot reach across accounts.
-    "accountId": null,
-
-    // "cloudflare" is Workers AI, which needs no key of your own. anthropic/openai need keys
-    // stored on the gateway; "google" additionally requires CF_AI_GATEWAY_API_TOKEN.
-    "providers": ["cloudflare"]
+    "name": "acme-os-gateway",
+    "accountId": "904dd3d810f6f1dd3801d8b940bd747a",
+    "providers": ["anthropic", "openai", "google", "cloudflare"],
   },
 
   "context": {
     // Isolates Context data shared by this Workshop deployment.
-    // null scopes it to the public origin
-    "sharingDomain": null,
-
-    // null: Wrangler provisions and remembers a KV namespace on first deploy.
-    // string: bind an existing namespace by ID.
-    "kvNamespaceId": null
-
-    // Optional Git-compatible storage for Context collections. To enable it, add a comma after
-    // kvNamespaceId and uncomment this object. Requires Artifacts account access.
-    // "artifacts": {
-    //   "enabled": true,
-    //   // Optional override; defaults to "gatekeeper-context-collections".
-    //   "namespace": "custom-context-collections"
-    // }
+    "sharingDomain": "production",
+    "kvNamespaceId": null,
   },
 
   // Displayed to agents when the example custom integration is enabled in /admin.
-  // Reference: docs/customization.md#custom-gatekeepers
   "customGatekeeper": {
-    "name": "<ORGANIZATION_DISPLAY_NAME>",
-    "message": "<ORGANIZATION_GUIDANCE>"
+    "name": "ACME Studios",
+    "message": "ACME Studios internal integration. Ask the deployment operator before enabling writes.",
   },
 
+  // MCP Server Portal connector. Omit the entire block to hide the connector.
+  "mcpPortal": {
+    "url": "https://mcp.acme-studios.org/mcp",
+    "name": "ACME MCP Portal",
+    "auth": "oauth",
+    // "trustAnnotations": false  (default — portal is an aggregator, annotations unvetted)
+    // For "token" auth: set MCP_PORTAL_TOKEN via `wrangler secret put` on the portal worker.
+  },
+
+  // Per-tier model allowlist. JSON string injected as TIERS_CONFIG env var on the workshop.
+  // Reference: cloudflare-os/packages/workshop-backend/src/tiers.ts
+  "tiersConfig": "{\"frontier\":{\"groups\":[\"ai-admins\"],\"default\":\"@cf/zai-org/glm-5.2\",\"models\":[\"claude-opus-5\",\"claude-sonnet-5\",\"claude-fable-5\",\"gpt-5.6-sol\",\"gpt-5.6-terra\",\"gpt-5.6-luna\",\"@cf/moonshotai/kimi-k2.7-code\",\"@cf/zai-org/glm-5.2\",\"@cf/deepseek-ai/deepseek-v4-flash-0731\",\"@cf/moonshotai/kimi-k2.6\"]},\"standard\":{\"groups\":[\"ai-users\"],\"default\":\"@cf/zai-org/glm-5.2\",\"models\":[\"@cf/moonshotai/kimi-k2.7-code\",\"@cf/zai-org/glm-5.2\",\"@cf/deepseek-ai/deepseek-v4-flash-0731\",\"@cf/moonshotai/kimi-k2.6\",\"@cf/meta/llama-4-scout-17b-16e-instruct\",\"@cf/google/gemma-4-26b-a4b-it\",\"@cf/nvidia/nemotron-3-120b-a12b\"]},\"restricted\":{\"groups\":[],\"default\":\"@cf/meta/llama-3.3-70b-instruct-fp8-fast\",\"models\":[\"@cf/meta/llama-3.3-70b-instruct-fp8-fast\"]}}",
+
   // Explicit backend issue reports go to a private Worker that emits structured console errors.
-  // Set release to a commit/version when your deployment pipeline has one.
-  // Reference: docs/observability.md#quick-start
   "errorReporting": {
     "enabled": true,
     "environment": "production",
-    "release": null
+    "release": null,
   },
 
-  // null values use Wrangler automatic provisioning. Set IDs/names to reuse owned resources.
-  // https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning
+  // null values use Wrangler automatic provisioning.
   "resources": {
     "blueprintsKvNamespaceId": null,
     "avatarsKvNamespaceId": null,
-    "blueprintContentBucket": null
+    "blueprintContentBucket": null,
   },
 
   // Structured custom logs stay enabled. Invocation logs and traces are separate volume controls.
-  // https://developers.cloudflare.com/workers/observability/logs/workers-logs/
   "observability": {
     "enabled": true,
     "headSamplingRate": 1,
     "logs": { "invocationLogs": false },
-    "traces": { "enabled": false, "headSamplingRate": 0.1 }
-  }
+    "traces": { "enabled": true, "headSamplingRate": 0.1 },
+  },
 }

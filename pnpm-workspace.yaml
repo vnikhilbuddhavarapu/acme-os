@@ -1,6 +1,7 @@
 packages:
   - cloudflare-os/packages/workshop-shared
   - cloudflare-os/packages/error-reporting
+  - cloudflare-os/scripts
   - packages/*
 
 # Mirror of cloudflare-os/pnpm-workspace.yaml's catalog. Required, not merely tidy: the two
@@ -15,10 +16,10 @@ packages:
 # split installs in CI and on a fresh checkout do not. See
 # cloudflare-os/docs/integration-testing.md.
 catalog:
-  '@cloudflare/vitest-pool-workers': ^0.20.2
-  capnweb: ^0.11.1
+  "@cloudflare/vitest-pool-workers": ^0.22.0
+  capnweb: ^0.12.0
   # Exact: pinned in lockstep with capnweb (declared as a >=0.7.0 peer)
-  capnweb-validate: 0.2.4
+  capnweb-validate: 0.3.0
   # Exact: TypeScript 7 (tsgo). The submodule's tsconfig sets `singleThreaded`, which TS 5.9
   # rejects outright, so every package extending it has to be on 7.x. Nothing here uses the JS
   # compiler API, so the submodule's `typescript6` alias is not needed.
@@ -37,10 +38,10 @@ overrides:
   vite: "catalog:"
   # Arrives as an optional vite/vitest peer resolved to `latest`; pinned to the same release the
   # submodule pins so the two installs agree.
-  '@types/node': 26.1.0
+  "@types/node": 26.1.0
 
 allowBuilds:
-  '@google/genai': true
+  "@google/genai": true
   core-js-pure: true
   esbuild: true
   protobufjs: true

@@ -25,10 +25,14 @@ const packageDirs = {
   context: "cloudflare-os/packages/gatekeeper-context",
   scheduler: "cloudflare-os/packages/gatekeeper-scheduler",
   customGatekeeper: "packages/custom-gatekeeper",
+  mcpPortal: "cloudflare-os/packages/gatekeeper-mcp-portal",
   errorReporter: "packages/error-reporter",
 } as const;
 const generatedPaths = Object.fromEntries(
-  Object.entries(packageDirs).map(([name, dir]) => [name, join(root, dir, generatedName)]),
+  Object.entries(packageDirs).map(([name, dir]) => [
+    name,
+    join(root, dir, generatedName),
+  ]),
 ) as Record<keyof typeof packageDirs, string>;
 const defaultContextArtifactsNamespace = "gatekeeper-context-collections";
 const accountIdPattern = /^[a-f\d]{32}$/i;
@@ -56,14 +60,18 @@ const requiredPaths = [
 
 // `aiGateway.accountId` is deliberately absent: null is its normal value, meaning "the gateway
 // lives in the deployment's own account".
-const aiGatewayPaths = [
-  "aiGateway.name",
-  "aiGateway.providers",
-];
+const aiGatewayPaths = ["aiGateway.name", "aiGateway.providers"];
 
 const errorReportingPaths = [
   "workers.errorReporter.name",
   "errorReporting.environment",
+];
+
+const mcpPortalPaths = [
+  "workers.mcpPortal.name",
+  "mcpPortal.url",
+  "mcpPortal.name",
+  "mcpPortal.auth",
 ];
 
 const resourcePaths = [
@@ -74,8 +82,12 @@ const resourcePaths = [
 ];
 
 function valueAt(object: DeploymentConfig, path: string): unknown {
-  return path.split(".").reduce<unknown>(
-    (value, key) => (value as Record<string, unknown> | undefined)?.[key], object);
+  return path
+    .split(".")
+    .reduce<unknown>(
+      (value, key) => (value as Record<string, unknown> | undefined)?.[key],
+      object,
+    );
 }
 
 /**
@@ -95,20 +107,25 @@ export function publicOrigin(config: DeploymentConfig): string {
   return `https://${config.workers.router.route.customDomain!}`;
 }
 
-function validatePublicBaseUrl(config: DeploymentConfig, route: RouterRoute): void {
+function validatePublicBaseUrl(
+  config: DeploymentConfig,
+  route: RouterRoute,
+): void {
   const value = config.publicBaseUrl;
   if (value === undefined) {
     throw new Error(
       "publicBaseUrl must be present. Use null to derive it from " +
-      "workers.router.route.customDomain.");
+        "workers.router.route.customDomain.",
+    );
   }
   if (value === null) {
     if (!route.customDomain) {
       throw new Error(
         "publicBaseUrl is required on a workersDev route. The account's workers.dev subdomain is " +
-        "not in deployment.jsonc and wrangler exposes no command to look it up, so there is " +
-        "nothing to derive the public origin from -- and PUBLIC_BASE_URL and the Context sharing " +
-        "boundary both need one. Set it to https://<router-name>.<subdomain>.workers.dev.");
+          "not in deployment.jsonc and wrangler exposes no command to look it up, so there is " +
+          "nothing to derive the public origin from -- and PUBLIC_BASE_URL and the Context sharing " +
+          "boundary both need one. Set it to https://<router-name>.<subdomain>.workers.dev.",
+      );
     }
     return;
   }
@@ -119,17 +136,21 @@ function validatePublicBaseUrl(config: DeploymentConfig, route: RouterRoute): vo
   try {
     origin = new URL(value).origin;
   } catch {
-    throw new Error("publicBaseUrl must be an HTTPS origin such as https://os.example.com.");
+    throw new Error(
+      "publicBaseUrl must be an HTTPS origin such as https://os.example.com.",
+    );
   }
   if (!value.startsWith("https://") || origin !== value) {
     throw new Error(
-      "publicBaseUrl must be an HTTPS origin only, with no path and no trailing slash.");
+      "publicBaseUrl must be an HTTPS origin only, with no path and no trailing slash.",
+    );
   }
   if (route.customDomain && value !== `https://${route.customDomain}`) {
     throw new Error(
       `publicBaseUrl (${value}) does not match workers.router.route.customDomain ` +
-      `(${route.customDomain}). Context data would then be scoped to a hostname this deployment ` +
-      "does not answer on. Leave publicBaseUrl null to derive it from the custom domain.");
+        `(${route.customDomain}). Context data would then be scoped to a hostname this deployment ` +
+        "does not answer on. Leave publicBaseUrl null to derive it from the custom domain.",
+    );
   }
   // On a workersDev route there is nothing to cross-check the value against the way a custom domain
   // checks itself, so check its shape instead. The account's workers.dev subdomain is unknowable
@@ -141,20 +162,25 @@ function validatePublicBaseUrl(config: DeploymentConfig, route: RouterRoute): vo
     const labels = new URL(value).host.split(".");
     const [worker, subdomain, ...suffix] = labels;
     const routerName = config.workers.router.name;
-    if (labels.length !== 4 || suffix.join(".") !== "workers.dev" ||
-        !/^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/.test(subdomain ?? "")) {
+    if (
+      labels.length !== 4 ||
+      suffix.join(".") !== "workers.dev" ||
+      !/^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/.test(subdomain ?? "")
+    ) {
       throw new Error(
         `publicBaseUrl (${value}) is not a workers.dev origin. On a workersDev route it must be ` +
-        `https://${routerName}.<subdomain>.workers.dev, where <subdomain> is the account's ` +
-        "workers.dev subdomain. It becomes PUBLIC_BASE_URL and the Context sharing boundary, so a " +
-        "hostname this deployment does not answer on hides Context data and breaks redirects.");
+          `https://${routerName}.<subdomain>.workers.dev, where <subdomain> is the account's ` +
+          "workers.dev subdomain. It becomes PUBLIC_BASE_URL and the Context sharing boundary, so a " +
+          "hostname this deployment does not answer on hides Context data and breaks redirects.",
+      );
     }
     if (worker !== routerName) {
       throw new Error(
         `publicBaseUrl (${value}) names Worker "${worker}", but the router is ` +
-        `"${routerName}". The router is what answers on the public origin, so this origin belongs ` +
-        `to a different Worker. Use https://${routerName}.${subdomain}.workers.dev, or change ` +
-        "workers.router.name if the other name is the one you meant.");
+          `"${routerName}". The router is what answers on the public origin, so this origin belongs ` +
+          `to a different Worker. Use https://${routerName}.${subdomain}.workers.dev, or change ` +
+          "workers.router.name if the other name is the one you meant.",
+      );
     }
   }
 }
@@ -164,18 +190,29 @@ export function validateConfig(config: DeploymentConfig): DeploymentConfig {
     ...requiredPaths,
     ...(config.aiGateway?.enabled ? aiGatewayPaths : []),
     ...(config.errorReporting?.enabled ? errorReportingPaths : []),
+    ...(config.workers.mcpPortal ? mcpPortalPaths : []),
   ];
   for (const path of activePaths) {
     const value = valueAt(config, path);
-    if (value === undefined || value === null || value === "" || Array.isArray(value) && !value.length) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === "" ||
+      (Array.isArray(value) && !value.length)
+    ) {
       throw new Error(`Missing required deployment value: ${path}`);
     }
   }
 
   for (const path of resourcePaths) {
     const value = valueAt(config, path);
-    if (value === undefined || value !== null && (typeof value !== "string" || !value)) {
-      throw new Error(`Deployment resource must be null or a non-empty string: ${path}`);
+    if (
+      value === undefined ||
+      (value !== null && (typeof value !== "string" || !value))
+    ) {
+      throw new Error(
+        `Deployment resource must be null or a non-empty string: ${path}`,
+      );
     }
   }
 
@@ -190,19 +227,23 @@ export function validateConfig(config: DeploymentConfig): DeploymentConfig {
     };
   }
   const placeholder = JSON.stringify(activeConfig).match(/<[^>]+>/)?.[0];
-  if (placeholder) throw new Error(`Replace deployment placeholder ${placeholder}.`);
+  if (placeholder)
+    throw new Error(`Replace deployment placeholder ${placeholder}.`);
 
-  const stringPaths = activePaths.filter((path) => ![
-    "access.admins",
-    "aiGateway.enabled",
-    "aiGateway.providers",
-    "errorReporting.enabled",
-    "observability.enabled",
-    "observability.headSamplingRate",
-    "observability.logs.invocationLogs",
-    "observability.traces.enabled",
-    "observability.traces.headSamplingRate",
-  ].includes(path));
+  const stringPaths = activePaths.filter(
+    (path) =>
+      ![
+        "access.admins",
+        "aiGateway.enabled",
+        "aiGateway.providers",
+        "errorReporting.enabled",
+        "observability.enabled",
+        "observability.headSamplingRate",
+        "observability.logs.invocationLogs",
+        "observability.traces.enabled",
+        "observability.traces.headSamplingRate",
+      ].includes(path),
+  );
   for (const path of stringPaths) {
     if (typeof valueAt(config, path) !== "string") {
       throw new Error(`Deployment value must be a string: ${path}`);
@@ -210,30 +251,46 @@ export function validateConfig(config: DeploymentConfig): DeploymentConfig {
   }
 
   if (!accountIdPattern.test(config.accountId)) {
-    throw new Error("Cloudflare account IDs must be 32 hexadecimal characters.");
+    throw new Error(
+      "Cloudflare account IDs must be 32 hexadecimal characters.",
+    );
   }
   const workerNames = Object.entries(config.workers)
     .filter(([key]) => key !== "errorReporter" || config.errorReporting.enabled)
+    .filter(([, worker]) => worker && worker.name)
     .map(([, worker]) => worker.name);
   if (new Set(workerNames).size !== workerNames.length) {
     throw new Error(
-      "Router, Workshop, Context, Scheduler, and custom Gatekeeper names must be unique.");
+      "Router, Workshop, Context, Scheduler, custom Gatekeeper, and MCP Portal names must be unique.",
+    );
   }
-  if (!workerNames.every((name) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(name))) {
-    throw new Error("Worker names must use lowercase letters, numbers, and hyphens.");
+  if (
+    !workerNames.every((name) =>
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(name),
+    )
+  ) {
+    throw new Error(
+      "Worker names must use lowercase letters, numbers, and hyphens.",
+    );
   }
 
   const route = config.workers.router.route;
   if (!route || Boolean(route.workersDev) === Boolean(route.customDomain)) {
-    throw new Error("Set exactly one router route: workersDev or customDomain.");
+    throw new Error(
+      "Set exactly one router route: workersDev or customDomain.",
+    );
   }
   if (route.workersDev !== undefined && route.workersDev !== true) {
     throw new Error("Router workersDev must be boolean true when selected.");
   }
-  if (route.customDomain !== undefined && typeof route.customDomain !== "string") {
+  if (
+    route.customDomain !== undefined &&
+    typeof route.customDomain !== "string"
+  ) {
     throw new Error("Router customDomain must be a string.");
   }
-  const hostnamePattern = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+  const hostnamePattern =
+    /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
   if (route.customDomain && !hostnamePattern.test(route.customDomain)) {
     throw new Error("Router customDomain must be a lowercase hostname.");
   }
@@ -241,53 +298,83 @@ export function validateConfig(config: DeploymentConfig): DeploymentConfig {
   validatePublicBaseUrl(config, route);
 
   const sharingDomain = config.context.sharingDomain;
-  if (sharingDomain !== null &&
-      (typeof sharingDomain !== "string" || !sharingDomain.trim())) {
+  if (
+    sharingDomain !== null &&
+    (typeof sharingDomain !== "string" || !sharingDomain.trim())
+  ) {
     throw new Error(
       "context.sharingDomain must be null or a non-empty string. null scopes Context data to the " +
-      "deployment's public origin, which is what the hosted deploy does.");
+        "deployment's public origin, which is what the hosted deploy does.",
+    );
   }
 
   const issuer = new URL(config.access.issuer);
-  if (issuer.protocol !== "https:" ||
-      issuer.origin !== config.access.issuer.replace(/\/$/, "")) {
+  if (
+    issuer.protocol !== "https:" ||
+    issuer.origin !== config.access.issuer.replace(/\/$/, "")
+  ) {
     throw new Error("Cloudflare Access issuer must be an HTTPS origin only.");
   }
-  if (!config.access.audience.trim() || config.access.audience !== config.access.audience.trim()) {
-    throw new Error("Cloudflare Access audience must not be blank or padded with whitespace.");
+  if (
+    !config.access.audience.trim() ||
+    config.access.audience !== config.access.audience.trim()
+  ) {
+    throw new Error(
+      "Cloudflare Access audience must not be blank or padded with whitespace.",
+    );
   }
-  if (!Array.isArray(config.access.admins) ||
-      !config.access.admins.every((email) =>
-        typeof email === "string" && /^[^@\s]+@[^@\s]+$/.test(email))) {
+  if (
+    !Array.isArray(config.access.admins) ||
+    !config.access.admins.every(
+      (email) => typeof email === "string" && /^[^@\s]+@[^@\s]+$/.test(email),
+    )
+  ) {
     throw new Error("Every Access administrator must be an email address.");
   }
 
   validateAiGateway(config);
+  validateMcpPortal(config);
 
   if (typeof config.errorReporting.enabled !== "boolean") {
     throw new Error("Error reporting enabled must be a boolean.");
   }
   const release = config.errorReporting.release;
-  if (release !== null && release !== undefined &&
-      (typeof release !== "string" || !release.trim() || release !== release.trim())) {
-    throw new Error("Error reporting release must be null or a non-padded string.");
+  if (
+    release !== null &&
+    release !== undefined &&
+    (typeof release !== "string" ||
+      !release.trim() ||
+      release !== release.trim())
+  ) {
+    throw new Error(
+      "Error reporting release must be null or a non-padded string.",
+    );
   }
 
   const artifactsConfig = config.context.artifacts;
-  if (artifactsConfig !== undefined &&
-      (artifactsConfig === null || typeof artifactsConfig !== "object" ||
-       Array.isArray(artifactsConfig))) {
-    throw new Error("Context Artifacts configuration must be an object when present.");
+  if (
+    artifactsConfig !== undefined &&
+    (artifactsConfig === null ||
+      typeof artifactsConfig !== "object" ||
+      Array.isArray(artifactsConfig))
+  ) {
+    throw new Error(
+      "Context Artifacts configuration must be an object when present.",
+    );
   }
   const artifactsEnabled = artifactsConfig?.enabled;
   if (artifactsEnabled !== undefined && typeof artifactsEnabled !== "boolean") {
     throw new Error("Context Artifacts enabled must be a boolean.");
   }
   const artifactsNamespace = artifactsConfig?.namespace;
-  if (artifactsNamespace !== undefined &&
-      (typeof artifactsNamespace !== "string" ||
-       !/^[a-z\d][a-z\d._-]*$/i.test(artifactsNamespace))) {
-    throw new Error("Context Artifacts namespace must be omitted or start with a letter or number and use only letters, numbers, dots, underscores, and hyphens.");
+  if (
+    artifactsNamespace !== undefined &&
+    (typeof artifactsNamespace !== "string" ||
+      !/^[a-z\d][a-z\d._-]*$/i.test(artifactsNamespace))
+  ) {
+    throw new Error(
+      "Context Artifacts namespace must be omitted or start with a letter or number and use only letters, numbers, dots, underscores, and hyphens.",
+    );
   }
 
   const sampling = config.observability.headSamplingRate;
@@ -297,12 +384,18 @@ export function validateConfig(config: DeploymentConfig): DeploymentConfig {
   if (typeof sampling !== "number" || sampling < 0 || sampling > 1) {
     throw new Error("Observability headSamplingRate must be between 0 and 1.");
   }
-  if (typeof config.observability.logs.invocationLogs !== "boolean" ||
-      typeof config.observability.traces.enabled !== "boolean") {
+  if (
+    typeof config.observability.logs.invocationLogs !== "boolean" ||
+    typeof config.observability.traces.enabled !== "boolean"
+  ) {
     throw new Error("Observability log and trace controls must be booleans.");
   }
   const traceSampling = config.observability.traces.headSamplingRate;
-  if (typeof traceSampling !== "number" || traceSampling < 0 || traceSampling > 1) {
+  if (
+    typeof traceSampling !== "number" ||
+    traceSampling < 0 ||
+    traceSampling > 1
+  ) {
     throw new Error("Observability trace sampling must be between 0 and 1.");
   }
   return config;
@@ -337,23 +430,32 @@ export interface AiGatewayPlan {
 export function aiGatewayPlan(config: DeploymentConfig): AiGatewayPlan | null {
   if (!config.aiGateway.enabled) return null;
   const deploymentAccountId = config.accountId.toLowerCase();
-  const gatewayAccountId = (config.aiGateway.accountId ?? config.accountId).toLowerCase();
+  const gatewayAccountId = (
+    config.aiGateway.accountId ?? config.accountId
+  ).toLowerCase();
   const crossAccount = gatewayAccountId !== deploymentAccountId;
   const tokenReasons: string[] = [];
   if (crossAccount) {
     tokenReasons.push(
       `aiGateway.accountId (${gatewayAccountId}) is not the deployment account, so the generated ` +
-      "config sets CF_AI_GATEWAY_USE_BINDING=false: the Workers AI binding only reaches gateways " +
-      "in the Worker's own account. That leaves the HTTPS transport, which needs a Run + Read " +
-      "CF_AI_GATEWAY_API_TOKEN. The opt-out is a flag rather than an unbound WORKERS_AI because " +
-      "webFetch's toMarkdown() runs on that binding too.");
+        "config sets CF_AI_GATEWAY_USE_BINDING=false: the Workers AI binding only reaches gateways " +
+        "in the Worker's own account. That leaves the HTTPS transport, which needs a Run + Read " +
+        "CF_AI_GATEWAY_API_TOKEN. The opt-out is a flag rather than an unbound WORKERS_AI because " +
+        "webFetch's toMarkdown() runs on that binding too.",
+    );
   }
   if (config.aiGateway.providers?.includes("google")) {
     tokenReasons.push(
       "The google provider needs CF_AI_GATEWAY_API_TOKEN: pi's Google adapter refuses a custom " +
-      "fetch, so Google inference cannot ride the Workers AI binding transport.");
+        "fetch, so Google inference cannot ride the Workers AI binding transport.",
+    );
   }
-  return { gatewayAccountId, crossAccount, needsToken: tokenReasons.length > 0, tokenReasons };
+  return {
+    gatewayAccountId,
+    crossAccount,
+    needsToken: tokenReasons.length > 0,
+    tokenReasons,
+  };
 }
 
 /**
@@ -366,8 +468,9 @@ function validateAiGateway(config: DeploymentConfig): void {
   if (config.aiGateway.workersAi !== undefined) {
     throw new Error(
       "aiGateway.workersAi does nothing: Workers AI rides the same gateway route as every other " +
-      "provider. Leaving the key in place deploys a Workshop with an empty model picker. Delete " +
-      "it; list \"cloudflare\" in aiGateway.providers to keep Workers AI models.");
+        "provider. Leaving the key in place deploys a Workshop with an empty model picker. Delete " +
+        'it; list "cloudflare" in aiGateway.providers to keep Workers AI models.',
+    );
   }
   if (typeof config.aiGateway.enabled !== "boolean") {
     throw new Error("AI Gateway enabled must be a boolean.");
@@ -375,26 +478,68 @@ function validateAiGateway(config: DeploymentConfig): void {
   if (!config.aiGateway.enabled) return;
 
   const providers = config.aiGateway.providers;
-  if (!Array.isArray(providers) || providers.length === 0 ||
-      !providers.every((provider) => AI_GATEWAY_PROVIDERS.includes(provider))) {
+  if (
+    !Array.isArray(providers) ||
+    providers.length === 0 ||
+    !providers.every((provider) => AI_GATEWAY_PROVIDERS.includes(provider))
+  ) {
     throw new Error(
-      `AI Gateway providers must be a non-empty subset of ${AI_GATEWAY_PROVIDERS.join(", ")}.`);
+      `AI Gateway providers must be a non-empty subset of ${AI_GATEWAY_PROVIDERS.join(", ")}.`,
+    );
   }
 
   const gatewayAccountId = config.aiGateway.accountId;
-  if (gatewayAccountId !== undefined && gatewayAccountId !== null &&
-      (typeof gatewayAccountId !== "string" || !accountIdPattern.test(gatewayAccountId))) {
+  if (
+    gatewayAccountId !== undefined &&
+    gatewayAccountId !== null &&
+    (typeof gatewayAccountId !== "string" ||
+      !accountIdPattern.test(gatewayAccountId))
+  ) {
     throw new Error(
       "aiGateway.accountId must be null or 32 hexadecimal characters. null reuses the " +
-      "deployment's own account, which is what lets the Workers AI binding reach the gateway " +
-      "without an API token.");
+        "deployment's own account, which is what lets the Workers AI binding reach the gateway " +
+        "without an API token.",
+    );
+  }
+}
+
+function validateMcpPortal(config: DeploymentConfig): void {
+  const portal = config.mcpPortal;
+  if (!portal) return;
+  if (!config.workers.mcpPortal) {
+    throw new Error("mcpPortal config requires workers.mcpPortal.name.");
+  }
+  try {
+    const url = new URL(portal.url);
+    if (url.protocol !== "https:") {
+      throw new Error("mcpPortal.url must use HTTPS.");
+    }
+  } catch {
+    throw new Error("mcpPortal.url must be a valid HTTPS URL.");
+  }
+  if (typeof portal.name !== "string" || !portal.name.trim()) {
+    throw new Error("mcpPortal.name must be a non-empty string.");
+  }
+  if (portal.auth !== "oauth" && portal.auth !== "token") {
+    throw new Error('mcpPortal.auth must be "oauth" or "token".');
+  }
+  if (
+    portal.trustAnnotations !== undefined &&
+    typeof portal.trustAnnotations !== "boolean"
+  ) {
+    throw new Error(
+      "mcpPortal.trustAnnotations must be a boolean when present.",
+    );
   }
 }
 
 function routeConfig(route: RouterRoute) {
   return route.workersDev
     ? { workers_dev: true, routes: undefined }
-    : { workers_dev: false, routes: [{ pattern: route.customDomain!, custom_domain: true }] };
+    : {
+        workers_dev: false,
+        routes: [{ pattern: route.customDomain!, custom_domain: true }],
+      };
 }
 
 function setCommon(
@@ -428,26 +573,48 @@ function setCommon(
   };
 }
 
-export function generateConfigs(config: DeploymentConfig, bases: BaseConfigs): GeneratedConfigs {
+export function generateConfigs(
+  config: DeploymentConfig,
+  bases: BaseConfigs,
+): GeneratedConfigs {
   validateConfig(config);
   const router = structuredClone(bases.router);
   const workshop = structuredClone(bases.workshop);
   const context = structuredClone(bases.context);
   const scheduler = structuredClone(bases.scheduler);
   const customGatekeeper = structuredClone(bases.customGatekeeper);
+  const mcpPortal = config.mcpPortal
+    ? structuredClone(bases.mcpPortal)
+    : undefined;
   const errorReporter = config.errorReporting.enabled
     ? structuredClone(bases.errorReporter)
     : undefined;
   const origin = publicOrigin(config);
 
-  setCommon(router, config, config.workers.router.name, config.workers.router.route);
+  setCommon(
+    router,
+    config,
+    config.workers.router.name,
+    config.workers.router.route,
+  );
   router.services = [
     { binding: "WORKSHOP_BACKEND", service: config.workers.workshop.name },
     // No entrypoint and no props: the router forwards whole HTTP requests, unlike the backend's
     // vendor-RPC bindings. The binding name is what picks the /gatekeeper/<name> path.
     { binding: "GATEKEEPER_CONTEXT", service: config.workers.context.name },
     { binding: "GATEKEEPER_SCHEDULER", service: config.workers.scheduler.name },
-    { binding: "GATEKEEPER_CUSTOM", service: config.workers.customGatekeeper.name },
+    {
+      binding: "GATEKEEPER_CUSTOM",
+      service: config.workers.customGatekeeper.name,
+    },
+    ...(config.workers.mcpPortal
+      ? [
+          {
+            binding: "GATEKEEPER_MCP_PORTAL",
+            service: config.workers.mcpPortal.name,
+          },
+        ]
+      : []),
   ];
 
   setCommon(workshop, config, config.workers.workshop.name);
@@ -458,6 +625,7 @@ export function generateConfigs(config: DeploymentConfig, bases: BaseConfigs): G
     // Upstream builds OAuth redirect URIs and other absolute links from this. The backend has no
     // public route of its own, so the router's origin is the only correct value.
     PUBLIC_BASE_URL: origin,
+    ...(config.tiersConfig ? { TIERS_CONFIG: config.tiersConfig } : {}),
   };
   const gateway = aiGatewayPlan(config);
   if (gateway) {
@@ -473,10 +641,12 @@ export function generateConfigs(config: DeploymentConfig, bases: BaseConfigs): G
     // a better check than anything this script could do.
     if (gateway.needsToken) {
       workshop.secrets = {
-        required: [...new Set([
-          ...(workshop.secrets?.required ?? []),
-          "CF_AI_GATEWAY_API_TOKEN",
-        ])],
+        required: [
+          ...new Set([
+            ...(workshop.secrets?.required ?? []),
+            "CF_AI_GATEWAY_API_TOKEN",
+          ]),
+        ],
       };
     }
   }
@@ -484,16 +654,22 @@ export function generateConfigs(config: DeploymentConfig, bases: BaseConfigs): G
   // toMarkdown() runs on.
   workshop.ai = { binding: "WORKERS_AI" };
   workshop.services = [
-    ...(config.errorReporting.enabled ? [{
-      binding: "ERROR_REPORTER",
-      service: config.workers.errorReporter!.name,
-      entrypoint: "ErrorReporter",
-      props: {
-        service: config.workers.workshop.name,
-        environment: config.errorReporting.environment,
-        ...(config.errorReporting.release ? { release: config.errorReporting.release } : {}),
-      },
-    }] : []),
+    ...(config.errorReporting.enabled
+      ? [
+          {
+            binding: "ERROR_REPORTER",
+            service: config.workers.errorReporter!.name,
+            entrypoint: "ErrorReporter",
+            props: {
+              service: config.workers.workshop.name,
+              environment: config.errorReporting.environment,
+              ...(config.errorReporting.release
+                ? { release: config.errorReporting.release }
+                : {}),
+            },
+          },
+        ]
+      : []),
     {
       binding: "GATEKEEPER_CONTEXT",
       service: config.workers.context.name,
@@ -513,30 +689,59 @@ export function generateConfigs(config: DeploymentConfig, bases: BaseConfigs): G
       service: config.workers.customGatekeeper.name,
       entrypoint: "GatekeeperVendor",
     },
+    ...(config.workers.mcpPortal
+      ? [
+          {
+            binding: "GATEKEEPER_MCP_PORTAL",
+            service: config.workers.mcpPortal.name,
+            entrypoint: "GatekeeperVendor",
+          },
+        ]
+      : []),
   ];
   workshop.kv_namespaces = [
-    { binding: "BLUEPRINTS", ...(config.resources.blueprintsKvNamespaceId
-      ? { id: config.resources.blueprintsKvNamespaceId } : {}) },
-    { binding: "AVATARS", ...(config.resources.avatarsKvNamespaceId
-      ? { id: config.resources.avatarsKvNamespaceId } : {}) },
+    {
+      binding: "BLUEPRINTS",
+      ...(config.resources.blueprintsKvNamespaceId
+        ? { id: config.resources.blueprintsKvNamespaceId }
+        : {}),
+    },
+    {
+      binding: "AVATARS",
+      ...(config.resources.avatarsKvNamespaceId
+        ? { id: config.resources.avatarsKvNamespaceId }
+        : {}),
+    },
   ];
   workshop.r2_buckets = [
-    { binding: "BLUEPRINT_CONTENT", ...(config.resources.blueprintContentBucket
-      ? { bucket_name: config.resources.blueprintContentBucket } : {}) },
+    {
+      binding: "BLUEPRINT_CONTENT",
+      ...(config.resources.blueprintContentBucket
+        ? { bucket_name: config.resources.blueprintContentBucket }
+        : {}),
+    },
   ];
   // The router serves the frontend, and it is the only Worker with a public route.
   delete workshop.assets;
 
   setCommon(context, config, config.workers.context.name);
   context.kv_namespaces = [
-    { binding: "CONTEXT_COLLECTIONS", ...(config.context.kvNamespaceId
-      ? { id: config.context.kvNamespaceId } : {}) },
+    {
+      binding: "CONTEXT_COLLECTIONS",
+      ...(config.context.kvNamespaceId
+        ? { id: config.context.kvNamespaceId }
+        : {}),
+    },
   ];
   if (config.context.artifacts?.enabled ?? false) {
-    context.artifacts = [{
-      binding: "ARTIFACTS",
-      namespace: config.context.artifacts?.namespace ?? defaultContextArtifactsNamespace,
-    }];
+    context.artifacts = [
+      {
+        binding: "ARTIFACTS",
+        namespace:
+          config.context.artifacts?.namespace ??
+          defaultContextArtifactsNamespace,
+      },
+    ];
   } else {
     delete context.artifacts;
   }
@@ -552,12 +757,29 @@ export function generateConfigs(config: DeploymentConfig, bases: BaseConfigs): G
     CUSTOM_MESSAGE: config.customGatekeeper.message,
   };
 
+  if (mcpPortal) {
+    setCommon(mcpPortal, config, config.workers.mcpPortal!.name);
+    mcpPortal.vars = {
+      MCP_PORTAL_URL: config.mcpPortal!.url,
+      MCP_PORTAL_NAME: config.mcpPortal!.name,
+      MCP_PORTAL_AUTH: config.mcpPortal!.auth,
+      ...(config.mcpPortal!.trustAnnotations
+        ? { MCP_PORTAL_TRUST_ANNOTATIONS: "true" }
+        : {}),
+    };
+  }
+
   if (errorReporter) {
     setCommon(errorReporter, config, config.workers.errorReporter!.name);
   }
 
   return {
-    router, workshop, context, scheduler, customGatekeeper,
+    router,
+    workshop,
+    context,
+    scheduler,
+    customGatekeeper,
+    ...(mcpPortal && { mcpPortal }),
     ...(errorReporter && { errorReporter }),
   };
 }
@@ -567,7 +789,17 @@ export function generateConfigs(config: DeploymentConfig, bases: BaseConfigs): G
 
 /** `vp run --no-cache <task>` for a package in the submodule's workspace. */
 function submoduleBuild(pkg: string, task = "build"): string[] {
-  return ["--dir", "cloudflare-os", "exec", "vp", "run", "-F", pkg, "--no-cache", task];
+  return [
+    "--dir",
+    "cloudflare-os",
+    "exec",
+    "vp",
+    "run",
+    "-F",
+    pkg,
+    "--no-cache",
+    task,
+  ];
 }
 
 /** `vp run --no-cache <task>` for a package in this repository's own workspace. */
@@ -605,10 +837,18 @@ export function buildCommands(config: DeploymentConfig): BuildCommand[] {
     { args: submoduleBuild("@gadgets/gatekeeper-scheduler", "build:app") },
     { args: submoduleBuild("@gadgets/gatekeeper-scheduler") },
     { args: ownBuild("custom-gatekeeper") },
-    ...(config.errorReporting.enabled ? [{ args: ownBuild("error-reporter") }] : []),
+    ...(config.workers.mcpPortal
+      ? [{ args: submoduleBuild("@gadgets/gatekeeper-mcp-portal") }]
+      : []),
+    ...(config.errorReporting.enabled
+      ? [{ args: ownBuild("error-reporter") }]
+      : []),
     // Access mode is a build-time constant in the frontend bundle (`src/useAuth.ts`), so it is set
     // here rather than inherited: a bundle built under a different value is wrong, not just stale.
-    { args: submoduleBuild("@gadgets/workshop-frontend"), env: { VITE_CF_ACCESS_MODE: "true" } },
+    {
+      args: submoduleBuild("@gadgets/workshop-frontend"),
+      env: { VITE_CF_ACCESS_MODE: "true" },
+    },
     { args: submoduleBuild("@gadgets/router") },
     { args: submoduleBuild("@gadgets/workshop-backend") },
   ];
@@ -624,7 +864,9 @@ async function readJsonc<T>(path: string): Promise<T> {
   const result = parse(await readFile(path, "utf8"), errors, jsoncOptions) as T;
   if (errors.length) {
     const where = relative(root, path) || path;
-    throw new Error(`${where}: ${printParseErrorCode(errors[0].error)} at offset ${errors[0].offset}`);
+    throw new Error(
+      `${where}: ${printParseErrorCode(errors[0].error)} at offset ${errors[0].offset}`,
+    );
   }
   return result;
 }
@@ -635,7 +877,9 @@ async function readDeployment(path: string): Promise<DeploymentConfig> {
   try {
     return validateConfig(config);
   } catch (error) {
-    throw new Error(`${relative(root, path)}: ${(error as Error).message}`, { cause: error });
+    throw new Error(`${relative(root, path)}: ${(error as Error).message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -657,7 +901,11 @@ function runCommand(
 // Spawned through pnpmCommand rather than as a bare "pnpm": on Windows the pnpm on PATH is a `.cmd`
 // shim Node refuses to spawn without a shell, and `shell: true` would re-split argv and break any
 // checkout path containing a space.
-function run(args: string[], cwd = root, env: NodeJS.ProcessEnv = process.env): void {
+function run(
+  args: string[],
+  cwd = root,
+  env: NodeJS.ProcessEnv = process.env,
+): void {
   const [command, argv] = pnpmCommand(args, env);
   runCommand(command, argv, cwd, env, `pnpm ${args.join(" ")}`);
 }
@@ -672,7 +920,13 @@ function deployWorker(dir: string, extraArgs: string[]): void {
   const args = ["deploy", "--config", generatedName, ...extraArgs];
   const entry = resolveBinEntry(cwd, "wrangler");
   if (entry) {
-    runCommand(process.execPath, [entry, ...args], cwd, process.env, `wrangler ${args.join(" ")}`);
+    runCommand(
+      process.execPath,
+      [entry, ...args],
+      cwd,
+      process.env,
+      `wrangler ${args.join(" ")}`,
+    );
   } else {
     run(["exec", "wrangler", ...args], cwd);
   }
@@ -680,7 +934,9 @@ function deployWorker(dir: string, extraArgs: string[]): void {
 
 function requireSubmodule(): void {
   if (!existsSync(join(root, "cloudflare-os/package.json"))) {
-    throw new Error("CloudflareOS submodule is not initialized. Run git submodule update --init.");
+    throw new Error(
+      "CloudflareOS submodule is not initialized. Run git submodule update --init.",
+    );
   }
 }
 
@@ -696,8 +952,9 @@ function reportAiGateway(config: DeploymentConfig): void {
   if (!gateway) {
     console.warn(
       "\naiGateway.enabled is false: this deployment advertises no model catalog, and each user " +
-      "supplies their own model API keys. A Workshop migrated from the hosted deploy will show an " +
-      "empty model picker -- see docs/migrate-from-hosted.md.");
+        "supplies their own model API keys. A Workshop migrated from the hosted deploy will show an " +
+        "empty model picker -- see docs/migrate-from-hosted.md.",
+    );
     return;
   }
   if (!gateway.needsToken) return;
@@ -705,10 +962,11 @@ function reportAiGateway(config: DeploymentConfig): void {
   // generated config carries `account_id`, but `wrangler secret put` takes only `--name`
   console.warn(
     `\nCF_AI_GATEWAY_API_TOKEN is required by this configuration:\n` +
-    gateway.tokenReasons.map((reason) => `  - ${reason}`).join("\n") +
-    `\nInstall it before deploying:\n  CLOUDFLARE_ACCOUNT_ID=${config.accountId} ` +
-    `pnpm exec wrangler secret put CF_AI_GATEWAY_API_TOKEN ` +
-    `--name ${config.workers.workshop.name}\n`);
+      gateway.tokenReasons.map((reason) => `  - ${reason}`).join("\n") +
+      `\nInstall it before deploying:\n  CLOUDFLARE_ACCOUNT_ID=${config.accountId} ` +
+      `pnpm exec wrangler secret put CF_AI_GATEWAY_API_TOKEN ` +
+      `--name ${config.workers.workshop.name}\n`,
+  );
 }
 
 async function main(): Promise<void> {
@@ -716,11 +974,22 @@ async function main(): Promise<void> {
   const config = await readDeployment(join(root, "deployment.jsonc"));
   const generated = generateConfigs(config, {
     router: await readJsonc(join(root, packageDirs.router, "wrangler.jsonc")),
-    workshop: await readJsonc(join(root, packageDirs.workshop, "wrangler.jsonc")),
+    workshop: await readJsonc(
+      join(root, packageDirs.workshop, "wrangler.jsonc"),
+    ),
     context: await readJsonc(join(root, packageDirs.context, "wrangler.jsonc")),
-    scheduler: await readJsonc(join(root, packageDirs.scheduler, "wrangler.jsonc")),
-    customGatekeeper: await readJsonc(join(root, packageDirs.customGatekeeper, "wrangler.jsonc")),
-    errorReporter: await readJsonc(join(root, packageDirs.errorReporter, "wrangler.jsonc")),
+    scheduler: await readJsonc(
+      join(root, packageDirs.scheduler, "wrangler.jsonc"),
+    ),
+    customGatekeeper: await readJsonc(
+      join(root, packageDirs.customGatekeeper, "wrangler.jsonc"),
+    ),
+    mcpPortal: await readJsonc(
+      join(root, packageDirs.mcpPortal, "wrangler.jsonc"),
+    ),
+    errorReporter: await readJsonc(
+      join(root, packageDirs.errorReporter, "wrangler.jsonc"),
+    ),
   });
   reportAiGateway(config);
 
@@ -728,7 +997,8 @@ async function main(): Promise<void> {
     for (const [name, generatedConfig] of Object.entries(generated)) {
       await writeFile(
         generatedPaths[name as keyof typeof generatedPaths],
-        JSON.stringify(generatedConfig, null, 2) + "\n");
+        JSON.stringify(generatedConfig, null, 2) + "\n",
+      );
     }
     const check = process.argv.includes("--check");
     if (check) run(["test"]);
@@ -740,15 +1010,23 @@ async function main(): Promise<void> {
     deployWorker(packageDirs.context, deployArgs);
     deployWorker(packageDirs.scheduler, deployArgs);
     deployWorker(packageDirs.customGatekeeper, deployArgs);
+    if (config.workers.mcpPortal) {
+      deployWorker(packageDirs.mcpPortal, deployArgs);
+    }
     deployWorker(packageDirs.workshop, deployArgs);
     // Last: it binds every one of the above.
     deployWorker(packageDirs.router, deployArgs);
   } finally {
-    await Promise.all(Object.values(generatedPaths).map((path) => rm(path, { force: true })));
+    await Promise.all(
+      Object.values(generatedPaths).map((path) => rm(path, { force: true })),
+    );
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
   try {
     await main();
   } catch (error) {
