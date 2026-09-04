@@ -1,0 +1,19 @@
+cloudflare-os
+  s_58abe317d15222::t_e6525f75c04f7a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "622b264596e2d0229d8c0f097e1e04b6e1a33137",
+  "prompts": {},
+  "sessions": {
+    "s_58abe317d15222": {
+      "agent_id": {
+        "tool": "devin",
+        "id": "s_58abe317d15222",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
