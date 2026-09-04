@@ -1,0 +1,19 @@
+cloudflare-os
+  s_d3000c30a36db3::t_b1fd4a650cec91 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c1f70d47f9edef416e69d5f0dc9221154fb197e2",
+  "prompts": {},
+  "sessions": {
+    "s_d3000c30a36db3": {
+      "agent_id": {
+        "tool": "devin",
+        "id": "s_d3000c30a36db3",
+        "model": "unknown"
+      },
+      "human_author": "Nikhil <vnikhilbuddhavarapu@outlook.com>"
+    }
+  }
+}
